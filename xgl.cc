@@ -121,19 +121,19 @@ void xgl::Initialize() {
     extension_list = "";
   }
   chunkify_extension_list(chunky_extension_list, extension_list);
-  if(chunky_extension_list.count("GL_ARB_texture_rectangle"))
-    chunky_extension_list.insert("GL_EXT_texture_rectangle");
+  if(chunky_extension_list.count("GL_EXT_texture_rectangle"))
+    chunky_extension_list.insert("GL_ARB_texture_rectangle");
   if(chunky_extension_list.count("GL_NV_texture_rectangle"))
-    chunky_extension_list.insert("GL_EXT_texture_rectangle");
+    chunky_extension_list.insert("GL_ARB_texture_rectangle");
   const char* blacklist_list = getenv("XGL_DISABLED_EXTENSIONS");
   if(blacklist_list != NULL)
     chunkify_extension_list(blacklisted_extension_list, blacklist_list);
   if(blacklisted_extension_list.count("GL_ARB_texture_rectangle"))
-    blacklisted_aliased_extension_warning("GL_ARB_texture_rectangle",
-                                          "GL_EXT_texture_rectangle");
+    blacklisted_aliased_extension_warning("GL_EXT_texture_rectangle",
+                                          "GL_ARB_texture_rectangle");
   if(blacklisted_extension_list.count("GL_NV_texture_rectangle"))
     blacklisted_aliased_extension_warning("GL_NV_texture_rectangle",
-                                          "GL_EXT_texture_rectangle");
+                                          "GL_ARB_texture_rectangle");
   for(auto ext : blacklisted_extension_list) {
     if(chunky_extension_list.count(ext)) {
       fprintf(stderr, "xgl: Excommunicating ");
@@ -183,11 +183,11 @@ void xgl::Initialize() {
     stub_proc_address(GetBufferParameteriv);
     stub_proc_address(GetBufferPointerv);
   }
-  /* EXT_texture_rectangle */
+  /* ARB_texture_rectangle */
   if(MIN_VERSION(2, 1)
-     || chunky_extension_list.count("GL_EXT_texture_rectangle")) {
-    if(blacklisted_extension_list.count("GL_EXT_texture_rectangle"))
-      blacklisted_core_extension_warning("GL_EXT_texture_rectangle",2,1);
-    have_EXT_texture_rectangle = true;
+     || chunky_extension_list.count("GL_ARB_texture_rectangle")) {
+    if(blacklisted_extension_list.count("GL_ARB_texture_rectangle"))
+      blacklisted_core_extension_warning("GL_ARB_texture_rectangle",2,1);
+    have_ARB_texture_rectangle = true;
   }
 }

@@ -27,8 +27,8 @@ namespace xgl {
   EXTERN GLboolean(*UnmapBuffer)(GLenum target);
   EXTERN void(*GetBufferParameteriv)(GLenum target, GLenum pname, GLint* v);
   EXTERN void(*GetBufferPointerv)(GLenum target, GLenum pname, void** v);
-  /* EXT_texture_rectangle */
-  EXTERN bool have_EXT_texture_rectangle;
+  /* ARB_texture_rectangle */
+  EXTERN bool have_ARB_texture_rectangle;
 };
 
 #undef EXTERN
