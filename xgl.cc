@@ -68,9 +68,19 @@ if(xgl::out == NULL) goto wat
 #define set_proc_address_ARB(wat, out) \
 set_proc_address(wat, out, "gl" #out, "gl" #out "ARB")
 
+static void blacklisted_core_extension_warning(const char* ext,
+                                               int major, int minor) {
+  fprintf(stderr, "xgl: %s was in XGL_DISABLED_EXTENSIONS, but is a core feature in the current OpenGL version. In order to disable this feature, you must also set XGL_FAKE_VERSION to a version earlier than %i.%i.\n", ext, major, minor);
+}
+
+static void blacklisted_aliased_extension_warning(const char* ext,
+                                                  const char* alt) {
+  fprintf(stderr, "xgl: %s was in XGL_DISABLED_EXTENSIONS, but the presence of %s in XGL_DISABLED_EXTENSIONS is enough to blacklist all related extensions. %s has no effect.\n", ext, alt, ext);
+}
+
 void xgl::Initialize() {
   unsigned int core_major_version, core_minor_version, core_patch_version;
-  const char* version = getenv("GL_FAKE_VERSION");
+  const char* version = getenv("XGL_FAKE_VERSION");
   if(version == NULL)
     version = reinterpret_cast<const char*>(glGetString(GL_VERSION));
   if(version == NULL) {
@@ -111,20 +121,30 @@ void xgl::Initialize() {
     extension_list = "";
   }
   chunkify_extension_list(chunky_extension_list, extension_list);
-  const char* blacklist_list = getenv("GL_DISABLED_EXTENSIONS");
+  if(chunky_extension_list.count("GL_ARB_texture_rectangle"))
+    chunky_extension_list.insert("GL_EXT_texture_rectangle");
+  if(chunky_extension_list.count("GL_NV_texture_rectangle"))
+    chunky_extension_list.insert("GL_EXT_texture_rectangle");
+  const char* blacklist_list = getenv("XGL_DISABLED_EXTENSIONS");
   if(blacklist_list != NULL)
     chunkify_extension_list(blacklisted_extension_list, blacklist_list);
+  if(blacklisted_extension_list.count("GL_ARB_texture_rectangle"))
+    blacklisted_aliased_extension_warning("GL_ARB_texture_rectangle",
+                                          "GL_EXT_texture_rectangle");
+  if(blacklisted_extension_list.count("GL_NV_texture_rectangle"))
+    blacklisted_aliased_extension_warning("GL_NV_texture_rectangle",
+                                          "GL_EXT_texture_rectangle");
   for(auto ext : blacklisted_extension_list) {
     if(chunky_extension_list.count(ext)) {
       fprintf(stderr, "xgl: Excommunicating ");
       output_token(stderr, ext);
-      fprintf(stderr, " (due to GL_DISABLED_EXTENSIONS)\n");
+      fprintf(stderr, " (due to XGL_DISABLED_EXTENSIONS)\n");
       chunky_extension_list.erase(ext);
     }
     else {
       fprintf(stderr, "xgl: Extension ");
       output_token(stderr, ext);
-      fprintf(stderr, " present in GL_DISABLED_EXTENSIONS,"
+      fprintf(stderr, " present in XGL_DISABLED_EXTENSIONS,"
               " but absent from GL_EXTENSIONS\n");
     }
   }
@@ -132,7 +152,7 @@ void xgl::Initialize() {
   if(MIN_VERSION(1, 5)
      || chunky_extension_list.count("GL_ARB_vertex_buffer_object")) {
     if(blacklisted_extension_list.count("GL_ARB_vertex_buffer_object"))
-      fprintf(stderr, "xgl: GL_ARB_vertex_buffer_object was in GL_DISABLED_EXTENSIONS, but is a core feature in the current OpenGL version. In order to disable vertex buffer objects, you must also set GL_FAKE_VERSION to 1.4 or earlier.\n");
+      blacklisted_core_extension_warning("GL_ARB_vertex_buffer_object",1,5);
     have_ARB_vertex_buffer_object = true;
     set_proc_address_ARB(no_ARB_vertex_buffer_object, BindBuffer);
     set_proc_address_ARB(no_ARB_vertex_buffer_object, DeleteBuffers);
@@ -162,5 +182,12 @@ void xgl::Initialize() {
     stub_proc_address(UnmapBuffer);
     stub_proc_address(GetBufferParameteriv);
     stub_proc_address(GetBufferPointerv);
+  }
+  /* EXT_texture_rectangle */
+  if(MIN_VERSION(2, 1)
+     || chunky_extension_list.count("GL_EXT_texture_rectangle")) {
+    if(blacklisted_extension_list.count("GL_EXT_texture_rectangle"))
+      blacklisted_core_extension_warning("GL_EXT_texture_rectangle",2,1);
+    have_EXT_texture_rectangle = true;
   }
 }

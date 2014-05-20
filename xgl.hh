@@ -11,6 +11,7 @@
 
 namespace xgl {
   void Initialize();
+  /* ARB_vertex_buffer_object */
   EXTERN bool have_ARB_vertex_buffer_object;
   EXTERN void(*BindBuffer)(GLenum target, GLuint buffer);
   EXTERN void(*DeleteBuffers)(GLsizei n, const GLuint* buffers);
@@ -26,6 +27,8 @@ namespace xgl {
   EXTERN GLboolean(*UnmapBuffer)(GLenum target);
   EXTERN void(*GetBufferParameteriv)(GLenum target, GLenum pname, GLint* v);
   EXTERN void(*GetBufferPointerv)(GLenum target, GLenum pname, void** v);
+  /* EXT_texture_rectangle */
+  EXTERN bool have_EXT_texture_rectangle;
 };
 
 #undef EXTERN
