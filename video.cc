@@ -70,8 +70,8 @@ void Video::Init() {
           opengl_context_cookie);
   xgl::Initialize();
   /* OpenGL context setup */
-  glPixelStorei(GL_PACK_ALIGNMENT, 8);
-  glPixelStorei(GL_UNPACK_ALIGNMENT, 8);
+  glPixelStorei(GL_PACK_ALIGNMENT, TEG_PIXEL_PACK);
+  glPixelStorei(GL_UNPACK_ALIGNMENT, TEG_PIXEL_PACK);
 }
 
 void Video::ReadConfig() {

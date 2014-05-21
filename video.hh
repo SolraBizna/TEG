@@ -16,4 +16,8 @@ namespace Video {
   void Swap(); // swap buffers
 };
 
+#ifndef TEG_PIXEL_PACK
+#define TEG_PIXEL_PACK 8
+#endif
+
 #endif
