@@ -143,8 +143,8 @@ namespace xgl {
   EXTERN void (*VertexAttrib4Nusv)(GLuint index, const GLushort *v);
   EXTERN void (*VertexAttrib4Nuiv)(GLuint index, const GLuint *v);
   EXTERN void (*VertexAttribPointer)(GLuint index, GLint size, GLenum type,
-                                     boolean normalized, GLsizei stride,
-                                     const EXTERN void *pointer);
+                                     GLboolean normalized, GLsizei stride,
+                                     const void *pointer);
   EXTERN void (*EnableVertexAttribArray)(GLuint index);
   EXTERN void (*DisableVertexAttribArray)(GLuint index);
   EXTERN void (*BindAttribLocation)(GLhandleARB programObj,
@@ -163,7 +163,7 @@ namespace xgl {
                                          GLenum pname, void **pointer);
 };
 
-#define REQUIRE_EXTENSION(ext if(!xgl::have_##ext) die("Your video hardware does not support %s, and is therefore not supported.", #ext)
+#define REQUIRE_EXTENSION(ext) if(!xgl::have_##ext) die("Your video hardware does not support %s, and is therefore not supported.", #ext)
 
 #undef EXTERN
 
