@@ -83,7 +83,7 @@ namespace xgl {
                                     GLsizei *count, GLhandleARB *obj);
   EXTERN GLint (*GetUniformLocation)(GLhandleARB programObj,
                                      const GLcharARB *name);
-  EXTERN void (*GetActiveUniform)(GLhandleARB programObj, uGLint index,
+  EXTERN void (*GetActiveUniform)(GLhandleARB programObj, GLuint index,
                                   GLsizei maxLength, GLsizei *length,
                                   GLint *size, GLenum *type, GLcharARB *name);
   EXTERN void (*GetUniformfv)(GLhandleARB programObj, GLint location,
@@ -148,7 +148,7 @@ namespace xgl {
   EXTERN void (*EnableVertexAttribArray)(GLuint index);
   EXTERN void (*DisableVertexAttribArray)(GLuint index);
   EXTERN void (*BindAttribLocation)(GLhandleARB programObj,
-                                    GLuint index, const charARB *name);
+                                    GLuint index, const GLcharARB *name);
   EXTERN void (*GetActiveAttrib)(GLhandleARB programObj, GLuint index,
                                  GLsizei maxLength, GLsizei *length,
                                  GLint *size, GLenum *type, GLcharARB *name);

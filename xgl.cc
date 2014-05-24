@@ -95,6 +95,8 @@ void xgl::Initialize() {
       die("Unable to determine your OpenGL version.");
     }
   }
+#define MIN_MAJOR_VERSION(major) \
+  (core_major_version > (major))
 #define MIN_VERSION(major,minor) \
   (core_major_version > (major) \
    || (core_major_version == (major) && core_minor_version >= (minor)))
@@ -191,7 +193,7 @@ void xgl::Initialize() {
     have_ARB_texture_rectangle = true;
   } else have_ARB_texture_rectangle = false;
   /* ARB_shader_objects */
-  if(MIN_VERSION(2, 0)
+  if(MIN_MAJOR_VERSION(2)
      || chunky_extension_list.count("GL_ARB_shader_objects")) {
     if(blacklisted_extension_list.count("GL_ARB_shader_objects"))
       blacklisted_core_extension_warning("GL_ARB_shader_objects",2,0);
