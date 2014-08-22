@@ -3,6 +3,151 @@
 
 #include <unordered_set>
 
+static struct extension_element {
+  unsigned int min_major_version, min_minor_version, min_patch_version;
+  const char* name;
+  const char** aliases;
+  bool& presence_flag, **deps;
+  const struct proc_element {
+    const char** names;
+    void** addr;
+  } *procs;
+} extensions[] = {
+#define BEGIN_PROCS (const extension_element::proc_element[]){
+#define ARB_PROC(name) {(const char*[]){"gl" #name "ARB", "gl" #name, NULL}, (void**)&xgl::name},
+#define END_PROCS {NULL, NULL}}
+#define NO_PROCS BEGIN_PROCS END_PROCS
+  {
+    2, 1, 0,
+    "GL_ARB_texture_rectangle", (const char*[]){"GL_EXT_texture_rectangle","GL_NV_texture_rectangle",NULL},
+    xgl::have_ARB_texture_rectangle, NULL,
+    NO_PROCS
+  },
+  {
+    1, 5, 0,
+    "GL_ARB_vertex_buffer_object", NULL,
+    xgl::have_ARB_vertex_buffer_object, NULL,
+    BEGIN_PROCS
+    ARB_PROC(BindBuffer)
+    ARB_PROC(DeleteBuffers)
+    ARB_PROC(GenBuffers)
+    ARB_PROC(IsBuffer)
+    ARB_PROC(BufferData)
+    ARB_PROC(BufferSubData)
+    ARB_PROC(GetBufferSubData)
+    ARB_PROC(MapBuffer)
+    ARB_PROC(UnmapBuffer)
+    ARB_PROC(GetBufferParameteriv)
+    ARB_PROC(GetBufferPointerv)
+    END_PROCS
+  },
+  {
+    2, 0, 0,
+    "GL_ARB_shader_objects", NULL,
+    xgl::have_ARB_shader_objects, NULL,
+    BEGIN_PROCS
+    ARB_PROC(DeleteObject)
+    ARB_PROC(GetHandle)
+    ARB_PROC(DetachObject)
+    ARB_PROC(CreateShaderObject)
+    ARB_PROC(ShaderSource)
+    ARB_PROC(CompileShader)
+    ARB_PROC(CreateProgramObject)
+    ARB_PROC(AttachObject)
+    ARB_PROC(LinkProgram)
+    ARB_PROC(UseProgramObject)
+    ARB_PROC(ValidateProgram)
+    ARB_PROC(Uniform1f)
+    ARB_PROC(Uniform2f)
+    ARB_PROC(Uniform3f)
+    ARB_PROC(Uniform4f)
+    ARB_PROC(Uniform1i)
+    ARB_PROC(Uniform2i)
+    ARB_PROC(Uniform3i)
+    ARB_PROC(Uniform4i)
+    ARB_PROC(Uniform1fv)
+    ARB_PROC(Uniform2fv)
+    ARB_PROC(Uniform3fv)
+    ARB_PROC(Uniform4fv)
+    ARB_PROC(Uniform1iv)
+    ARB_PROC(Uniform2iv)
+    ARB_PROC(Uniform3iv)
+    ARB_PROC(Uniform4iv)
+    ARB_PROC(UniformMatrix2fv)
+    ARB_PROC(UniformMatrix3fv)
+    ARB_PROC(UniformMatrix4fv)
+    ARB_PROC(GetObjectParameterfv)
+    ARB_PROC(GetObjectParameteriv)
+    ARB_PROC(GetInfoLog)
+    ARB_PROC(GetAttachedObjects)
+    ARB_PROC(GetUniformLocation)
+    ARB_PROC(GetActiveUniform)
+    ARB_PROC(GetUniformfv)
+    ARB_PROC(GetUniformiv)
+    ARB_PROC(GetShaderSource)
+    END_PROCS
+  },
+  {
+    2, 0, 0,
+    "GL_ARB_vertex_shader", NULL,
+    xgl::have_ARB_vertex_shader, (bool*[]){&xgl::have_ARB_shader_objects, NULL},
+    BEGIN_PROCS
+    ARB_PROC(VertexAttrib1f)
+    ARB_PROC(VertexAttrib1s)
+    ARB_PROC(VertexAttrib1d)
+    ARB_PROC(VertexAttrib2f)
+    ARB_PROC(VertexAttrib2s)
+    ARB_PROC(VertexAttrib2d)
+    ARB_PROC(VertexAttrib3f)
+    ARB_PROC(VertexAttrib3s)
+    ARB_PROC(VertexAttrib3d)
+    ARB_PROC(VertexAttrib4f)
+    ARB_PROC(VertexAttrib4s)
+    ARB_PROC(VertexAttrib4d)
+    ARB_PROC(VertexAttrib4Nub)
+    ARB_PROC(VertexAttrib1fv)
+    ARB_PROC(VertexAttrib1sv)
+    ARB_PROC(VertexAttrib1dv)
+    ARB_PROC(VertexAttrib2fv)
+    ARB_PROC(VertexAttrib2sv)
+    ARB_PROC(VertexAttrib2dv)
+    ARB_PROC(VertexAttrib3fv)
+    ARB_PROC(VertexAttrib3sv)
+    ARB_PROC(VertexAttrib3dv)
+    ARB_PROC(VertexAttrib4fv)
+    ARB_PROC(VertexAttrib4sv)
+    ARB_PROC(VertexAttrib4dv)
+    ARB_PROC(VertexAttrib4iv)
+    ARB_PROC(VertexAttrib4bv)
+    ARB_PROC(VertexAttrib4ubv)
+    ARB_PROC(VertexAttrib4usv)
+    ARB_PROC(VertexAttrib4uiv)
+    ARB_PROC(VertexAttrib4Nbv)
+    ARB_PROC(VertexAttrib4Nsv)
+    ARB_PROC(VertexAttrib4Niv)
+    ARB_PROC(VertexAttrib4Nubv)
+    ARB_PROC(VertexAttrib4Nusv)
+    ARB_PROC(VertexAttrib4Nuiv)
+    ARB_PROC(VertexAttribPointer)
+    ARB_PROC(EnableVertexAttribArray)
+    ARB_PROC(DisableVertexAttribArray)
+    ARB_PROC(BindAttribLocation)
+    ARB_PROC(GetActiveAttrib)
+    ARB_PROC(GetAttribLocation)
+    ARB_PROC(GetVertexAttribdv)
+    ARB_PROC(GetVertexAttribfv)
+    ARB_PROC(GetVertexAttribiv)
+    ARB_PROC(GetVertexAttribPointerv)
+    END_PROCS
+  },
+  {
+    2, 0, 0,
+    "GL_ARB_fragment_shader", NULL,
+    xgl::have_ARB_fragment_shader, (bool*[]){&xgl::have_ARB_shader_objects, NULL},
+    NO_PROCS
+  },
+};
+
 static size_t bad_fast_token_hash(const char* src) {
   size_t result = 0;
   while(*src && *src != ' ')
@@ -38,44 +183,34 @@ static void chunkify_extension_list(std::unordered_set<const char*,
   }
 }
 
-static void* get_proc_address(const char* canon_name, ...) {
-  va_list arg;
-  va_start(arg, canon_name);
-  void* ret = NULL;
-  const char* next = canon_name;
-  do {
-    if(!ret) ret = SDL_GL_GetProcAddress(next);
-    next = va_arg(arg, const char*);
-  } while(next);
-  va_end(arg);
-  if(!ret)
-    fprintf(stderr, "xgl: Unable to find any implementation of %s\n",
-            canon_name);
-  return ret;
+static bool set_proc_address(const extension_element& ext,
+                             const extension_element::proc_element& proc) {
+  *proc.addr = NULL;
+  const char** p = proc.names;
+  while(*p) {
+    void* addr = SDL_GL_GetProcAddress(*p);
+    if(addr != NULL) {
+      *proc.addr = addr;
+      return true;
+    }
+  }
+  fprintf(stderr, "xgl: Unable to find any implementation of %s\n",
+          ext.name);
+  return false;
 }
 
 static void extension_stub() {
   die("Called an OpenGL function that was part of an unsupported or disabled extension.");
 }
 
-#define stub_proc_address(out) \
-xgl::out = reinterpret_cast<typeof(xgl::out)>(extension_stub)
-
-#define set_proc_address(wat, out, ...) \
-xgl::out = reinterpret_cast<typeof(xgl::out)> \
-  (get_proc_address(__VA_ARGS__, NULL));      \
-if(xgl::out == NULL) goto wat
-#define set_proc_address_ARB(wat, out) \
-set_proc_address(wat, out, "gl" #out, "gl" #out "ARB")
-
 static void blacklisted_core_extension_warning(const char* ext,
-                                               int major, int minor) {
-  fprintf(stderr, "xgl: %s was in XGL_DISABLED_EXTENSIONS, but is a core feature in the current OpenGL version. In order to disable this feature, you must also set XGL_FAKE_VERSION to a version earlier than %i.%i.\n", ext, major, minor);
+                                               int major, int minor, int patch) {
+  fprintf(stderr, "xgl: %s was in XGL_DISABLED_EXTENSIONS, but is a core feature in the current OpenGL version. In order to disable this feature, you must also set XGL_FAKE_VERSION to a version earlier than %i.%i.%i.\n", ext, major, minor, patch);
 }
 
 static void blacklisted_aliased_extension_warning(const char* ext,
                                                   const char* alt) {
-  fprintf(stderr, "xgl: %s was in XGL_DISABLED_EXTENSIONS, but the presence of %s in XGL_DISABLED_EXTENSIONS is enough to blacklist all related extensions. %s has no effect.\n", ext, alt, ext);
+  fprintf(stderr, "xgl: %s was in XGL_DISABLED_EXTENSIONS, but the presence of %s in XGL_DISABLED_EXTENSIONS also blacklists other, similar extensions. %s has no effect.\n", ext, alt, ext);
 }
 
 void xgl::Initialize() {
@@ -100,11 +235,11 @@ void xgl::Initialize() {
 #define MIN_VERSION(major,minor) \
   (core_major_version > (major) \
    || (core_major_version == (major) && core_minor_version >= (minor)))
-#define MIN_VERSION_2(major,minor,patch) \
+#define MIN_FULL_VERSION(major,minor,patch) \
   (core_major_version > (major) \
    || (core_major_version == (major) \
        && (core_minor_version > (minor) \
-           || (core_minor_version == (minor) && core_patch_version >= (patch))
+           || (core_minor_version == (minor) && core_patch_version >= (patch)))))
   if(!MIN_VERSION(1, 2)) {
     die("We require OpenGL 1.2 or later. Your OpenGL appears to be version"
         " %u.%u.%u. We are frankly amazed that you managed to obtain such an"
@@ -123,19 +258,25 @@ void xgl::Initialize() {
     extension_list = "";
   }
   chunkify_extension_list(chunky_extension_list, extension_list);
-  if(chunky_extension_list.count("GL_EXT_texture_rectangle"))
-    chunky_extension_list.insert("GL_ARB_texture_rectangle");
-  if(chunky_extension_list.count("GL_NV_texture_rectangle"))
-    chunky_extension_list.insert("GL_ARB_texture_rectangle");
+  for(auto ext : extensions) {
+    if(ext.aliases != NULL) {
+      for(auto p = ext.aliases; *p; ++p) {
+        if(chunky_extension_list.count(*p))
+          chunky_extension_list.insert(ext.name);
+      }
+    }
+  }
   const char* blacklist_list = getenv("XGL_DISABLED_EXTENSIONS");
   if(blacklist_list != NULL)
     chunkify_extension_list(blacklisted_extension_list, blacklist_list);
-  if(blacklisted_extension_list.count("GL_ARB_texture_rectangle"))
-    blacklisted_aliased_extension_warning("GL_EXT_texture_rectangle",
-                                          "GL_ARB_texture_rectangle");
-  if(blacklisted_extension_list.count("GL_NV_texture_rectangle"))
-    blacklisted_aliased_extension_warning("GL_NV_texture_rectangle",
-                                          "GL_ARB_texture_rectangle");
+  for(auto ext : extensions) {
+    if(ext.aliases != NULL) {
+      for(auto p = ext.aliases; *p; ++p) {
+        if(blacklisted_extension_list.count(*p))
+          blacklisted_aliased_extension_warning(*p, ext.name);
+      }
+    }
+  }
   for(auto ext : blacklisted_extension_list) {
     if(chunky_extension_list.count(ext)) {
       fprintf(stderr, "xgl: Excommunicating ");
@@ -150,259 +291,40 @@ void xgl::Initialize() {
               " but absent from GL_EXTENSIONS\n");
     }
   }
-  /* ARB_vertex_buffer_object */
-  if(MIN_VERSION(1, 5)
-     || chunky_extension_list.count("GL_ARB_vertex_buffer_object")) {
-    if(blacklisted_extension_list.count("GL_ARB_vertex_buffer_object"))
-      blacklisted_core_extension_warning("GL_ARB_vertex_buffer_object",1,5);
-    have_ARB_vertex_buffer_object = true;
-    set_proc_address_ARB(no_ARB_vertex_buffer_object, BindBuffer);
-    set_proc_address_ARB(no_ARB_vertex_buffer_object, DeleteBuffers);
-    set_proc_address_ARB(no_ARB_vertex_buffer_object, GenBuffers);
-    set_proc_address_ARB(no_ARB_vertex_buffer_object, IsBuffer);
-    set_proc_address_ARB(no_ARB_vertex_buffer_object, BufferData);
-    set_proc_address_ARB(no_ARB_vertex_buffer_object, BufferSubData);
-    set_proc_address_ARB(no_ARB_vertex_buffer_object, GetBufferSubData);
-    set_proc_address_ARB(no_ARB_vertex_buffer_object, MapBuffer);
-    set_proc_address_ARB(no_ARB_vertex_buffer_object, UnmapBuffer);
-    set_proc_address_ARB(no_ARB_vertex_buffer_object, GetBufferParameteriv);
-    set_proc_address_ARB(no_ARB_vertex_buffer_object, GetBufferPointerv);
-  }
-  else {
-  no_ARB_vertex_buffer_object:
-    have_ARB_vertex_buffer_object = false;
-  }
-  if(!have_ARB_vertex_buffer_object) {
-    stub_proc_address(BindBuffer);
-    stub_proc_address(DeleteBuffers);
-    stub_proc_address(GenBuffers);
-    stub_proc_address(IsBuffer);
-    stub_proc_address(BufferData);
-    stub_proc_address(BufferSubData);
-    stub_proc_address(GetBufferSubData);
-    stub_proc_address(MapBuffer);
-    stub_proc_address(UnmapBuffer);
-    stub_proc_address(GetBufferParameteriv);
-    stub_proc_address(GetBufferPointerv);
-  }
-  /* ARB_texture_rectangle */
-  if(MIN_VERSION(2, 1)
-     || chunky_extension_list.count("GL_ARB_texture_rectangle")) {
-    if(blacklisted_extension_list.count("GL_ARB_texture_rectangle"))
-      blacklisted_core_extension_warning("GL_ARB_texture_rectangle",2,1);
-    have_ARB_texture_rectangle = true;
-  } else have_ARB_texture_rectangle = false;
-  /* ARB_shader_objects */
-  if(MIN_MAJOR_VERSION(2)
-     || chunky_extension_list.count("GL_ARB_shader_objects")) {
-    if(blacklisted_extension_list.count("GL_ARB_shader_objects"))
-      blacklisted_core_extension_warning("GL_ARB_shader_objects",2,0);
-    have_ARB_shader_objects = true;
-    set_proc_address_ARB(no_ARB_shader_objects, DeleteObject);
-    set_proc_address_ARB(no_ARB_shader_objects, GetHandle);
-    set_proc_address_ARB(no_ARB_shader_objects, DetachObject);
-    set_proc_address_ARB(no_ARB_shader_objects, CreateShaderObject);
-    set_proc_address_ARB(no_ARB_shader_objects, ShaderSource);
-    set_proc_address_ARB(no_ARB_shader_objects, CompileShader);
-    set_proc_address_ARB(no_ARB_shader_objects, CreateProgramObject);
-    set_proc_address_ARB(no_ARB_shader_objects, AttachObject);
-    set_proc_address_ARB(no_ARB_shader_objects, LinkProgram);
-    set_proc_address_ARB(no_ARB_shader_objects, UseProgramObject);
-    set_proc_address_ARB(no_ARB_shader_objects, ValidateProgram);
-    set_proc_address_ARB(no_ARB_shader_objects, Uniform1f);
-    set_proc_address_ARB(no_ARB_shader_objects, Uniform2f);
-    set_proc_address_ARB(no_ARB_shader_objects, Uniform3f);
-    set_proc_address_ARB(no_ARB_shader_objects, Uniform4f);
-    set_proc_address_ARB(no_ARB_shader_objects, Uniform1i);
-    set_proc_address_ARB(no_ARB_shader_objects, Uniform2i);
-    set_proc_address_ARB(no_ARB_shader_objects, Uniform3i);
-    set_proc_address_ARB(no_ARB_shader_objects, Uniform4i);
-    set_proc_address_ARB(no_ARB_shader_objects, Uniform1fv);
-    set_proc_address_ARB(no_ARB_shader_objects, Uniform2fv);
-    set_proc_address_ARB(no_ARB_shader_objects, Uniform3fv);
-    set_proc_address_ARB(no_ARB_shader_objects, Uniform4fv);
-    set_proc_address_ARB(no_ARB_shader_objects, Uniform1iv);
-    set_proc_address_ARB(no_ARB_shader_objects, Uniform2iv);
-    set_proc_address_ARB(no_ARB_shader_objects, Uniform3iv);
-    set_proc_address_ARB(no_ARB_shader_objects, Uniform4iv);
-    set_proc_address_ARB(no_ARB_shader_objects, UniformMatrix2fv);
-    set_proc_address_ARB(no_ARB_shader_objects, UniformMatrix3fv);
-    set_proc_address_ARB(no_ARB_shader_objects, UniformMatrix4fv);
-    set_proc_address_ARB(no_ARB_shader_objects, GetObjectParameterfv);
-    set_proc_address_ARB(no_ARB_shader_objects, GetObjectParameteriv);
-    set_proc_address_ARB(no_ARB_shader_objects, GetInfoLog);
-    set_proc_address_ARB(no_ARB_shader_objects, GetAttachedObjects);
-    set_proc_address_ARB(no_ARB_shader_objects, GetUniformLocation);
-    set_proc_address_ARB(no_ARB_shader_objects, GetActiveUniform);
-    set_proc_address_ARB(no_ARB_shader_objects, GetUniformfv);
-    set_proc_address_ARB(no_ARB_shader_objects, GetUniformiv);
-    set_proc_address_ARB(no_ARB_shader_objects, GetShaderSource);
-    /* ARB_vertex_shader */
-    if(chunky_extension_list.count("GL_ARB_vertex_shader")) {
-      if(blacklisted_extension_list.count("GL_ARB_vertex_shader"))
-        blacklisted_core_extension_warning("GL_ARB_vertex_shader",2,0);
-      set_proc_address_ARB(no_ARB_vertex_shader, VertexAttrib1f);
-      set_proc_address_ARB(no_ARB_vertex_shader, VertexAttrib1s);
-      set_proc_address_ARB(no_ARB_vertex_shader, VertexAttrib1d);
-      set_proc_address_ARB(no_ARB_vertex_shader, VertexAttrib2f);
-      set_proc_address_ARB(no_ARB_vertex_shader, VertexAttrib2s);
-      set_proc_address_ARB(no_ARB_vertex_shader, VertexAttrib2d);
-      set_proc_address_ARB(no_ARB_vertex_shader, VertexAttrib3f);
-      set_proc_address_ARB(no_ARB_vertex_shader, VertexAttrib3s);
-      set_proc_address_ARB(no_ARB_vertex_shader, VertexAttrib3d);
-      set_proc_address_ARB(no_ARB_vertex_shader, VertexAttrib4f);
-      set_proc_address_ARB(no_ARB_vertex_shader, VertexAttrib4s);
-      set_proc_address_ARB(no_ARB_vertex_shader, VertexAttrib4d);
-      set_proc_address_ARB(no_ARB_vertex_shader, VertexAttrib4Nub);
-      set_proc_address_ARB(no_ARB_vertex_shader, VertexAttrib1fv);
-      set_proc_address_ARB(no_ARB_vertex_shader, VertexAttrib1sv);
-      set_proc_address_ARB(no_ARB_vertex_shader, VertexAttrib1dv);
-      set_proc_address_ARB(no_ARB_vertex_shader, VertexAttrib2fv);
-      set_proc_address_ARB(no_ARB_vertex_shader, VertexAttrib2sv);
-      set_proc_address_ARB(no_ARB_vertex_shader, VertexAttrib2dv);
-      set_proc_address_ARB(no_ARB_vertex_shader, VertexAttrib3fv);
-      set_proc_address_ARB(no_ARB_vertex_shader, VertexAttrib3sv);
-      set_proc_address_ARB(no_ARB_vertex_shader, VertexAttrib3dv);
-      set_proc_address_ARB(no_ARB_vertex_shader, VertexAttrib4fv);
-      set_proc_address_ARB(no_ARB_vertex_shader, VertexAttrib4sv);
-      set_proc_address_ARB(no_ARB_vertex_shader, VertexAttrib4dv);
-      set_proc_address_ARB(no_ARB_vertex_shader, VertexAttrib4iv);
-      set_proc_address_ARB(no_ARB_vertex_shader, VertexAttrib4bv);
-      set_proc_address_ARB(no_ARB_vertex_shader, VertexAttrib4ubv);
-      set_proc_address_ARB(no_ARB_vertex_shader, VertexAttrib4usv);
-      set_proc_address_ARB(no_ARB_vertex_shader, VertexAttrib4uiv);
-      set_proc_address_ARB(no_ARB_vertex_shader, VertexAttrib4Nbv);
-      set_proc_address_ARB(no_ARB_vertex_shader, VertexAttrib4Nsv);
-      set_proc_address_ARB(no_ARB_vertex_shader, VertexAttrib4Niv);
-      set_proc_address_ARB(no_ARB_vertex_shader, VertexAttrib4Nubv);
-      set_proc_address_ARB(no_ARB_vertex_shader, VertexAttrib4Nusv);
-      set_proc_address_ARB(no_ARB_vertex_shader, VertexAttrib4Nuiv);
-      set_proc_address_ARB(no_ARB_vertex_shader, VertexAttribPointer);
-      set_proc_address_ARB(no_ARB_vertex_shader, EnableVertexAttribArray);
-      set_proc_address_ARB(no_ARB_vertex_shader, DisableVertexAttribArray);
-      set_proc_address_ARB(no_ARB_vertex_shader, BindAttribLocation);
-      set_proc_address_ARB(no_ARB_vertex_shader, GetActiveAttrib);
-      set_proc_address_ARB(no_ARB_vertex_shader, GetAttribLocation);
-      set_proc_address_ARB(no_ARB_vertex_shader, GetVertexAttribdv);
-      set_proc_address_ARB(no_ARB_vertex_shader, GetVertexAttribfv);
-      set_proc_address_ARB(no_ARB_vertex_shader, GetVertexAttribiv);
-      set_proc_address_ARB(no_ARB_vertex_shader, GetVertexAttribPointerv);
+  for(auto ext : extensions) {
+    ext.presence_flag = false;
+    if(ext.deps != NULL) {
+      for(bool** p = ext.deps; *p != NULL; ++p) {
+        if(!**p) {
+          dprintf("Extension %s is missing a dependency.\n", ext.name);
+          goto extension_is_dead;
+        }
+      }
     }
-    else {
-    no_ARB_vertex_shader:
-      have_ARB_vertex_shader = false;
+    if(MIN_FULL_VERSION(ext.min_major_version,
+                        ext.min_minor_version,
+                        ext.min_patch_version)
+       || chunky_extension_list.count(ext.name)) {
+      if(blacklisted_extension_list.count(ext.name))
+        blacklisted_core_extension_warning(ext.name,
+                                           ext.min_major_version,
+                                           ext.min_minor_version,
+                                           ext.min_patch_version);
+      ext.presence_flag = true;
+      for(auto proc = ext.procs; proc->names != NULL; ++proc) {
+        if(!set_proc_address(ext, *proc)) {
+          ext.presence_flag = false;
+          goto extension_is_dead;
+        }
+      }
+      dprintf("Found procs for %s.\n", ext.name);
     }
-    /* ARB_fragment_shader */
-    if(chunky_extension_list.count("GL_ARB_fragment_shader")) {
-      if(blacklisted_extension_list.count("GL_ARB_fragment_shader"))
-        blacklisted_core_extension_warning("GL_ARB_fragment_shader",2,0);
-      have_ARB_fragment_shader = true;
-    } else have_ARB_fragment_shader = false;
-  }
-  else {
-  no_ARB_shader_objects:
-    have_ARB_shader_objects = false;
-    have_ARB_vertex_shader = false;
-    have_ARB_fragment_shader = false;
-  }
-  if(!have_ARB_shader_objects) {
-    stub_proc_address(DeleteObject);
-    stub_proc_address(GetHandle);
-    stub_proc_address(DetachObject);
-    stub_proc_address(CreateShaderObject);
-    stub_proc_address(ShaderSource);
-    stub_proc_address(CompileShader);
-    stub_proc_address(CreateProgramObject);
-    stub_proc_address(AttachObject);
-    stub_proc_address(LinkProgram);
-    stub_proc_address(UseProgramObject);
-    stub_proc_address(ValidateProgram);
-    stub_proc_address(Uniform1f);
-    stub_proc_address(Uniform2f);
-    stub_proc_address(Uniform3f);
-    stub_proc_address(Uniform4f);
-    stub_proc_address(Uniform1i);
-    stub_proc_address(Uniform2i);
-    stub_proc_address(Uniform3i);
-    stub_proc_address(Uniform4i);
-    stub_proc_address(Uniform1fv);
-    stub_proc_address(Uniform2fv);
-    stub_proc_address(Uniform3fv);
-    stub_proc_address(Uniform4fv);
-    stub_proc_address(Uniform1iv);
-    stub_proc_address(Uniform2iv);
-    stub_proc_address(Uniform3iv);
-    stub_proc_address(Uniform4iv);
-    stub_proc_address(UniformMatrix2fv);
-    stub_proc_address(UniformMatrix3fv);
-    stub_proc_address(UniformMatrix4fv);
-    stub_proc_address(GetObjectParameterfv);
-    stub_proc_address(GetObjectParameteriv);
-    stub_proc_address(GetInfoLog);
-    stub_proc_address(GetAttachedObjects);
-    stub_proc_address(GetUniformLocation);
-    stub_proc_address(GetActiveUniform);
-    stub_proc_address(GetUniformfv);
-    stub_proc_address(GetUniformiv);
-    stub_proc_address(GetShaderSource);
-    stub_proc_address(BindBuffer);
-    stub_proc_address(DeleteBuffers);
-    stub_proc_address(GenBuffers);
-    stub_proc_address(IsBuffer);
-    stub_proc_address(BufferData);
-    stub_proc_address(BufferSubData);
-    stub_proc_address(GetBufferSubData);
-    stub_proc_address(MapBuffer);
-    stub_proc_address(UnmapBuffer);
-    stub_proc_address(GetBufferParameteriv);
-    stub_proc_address(GetBufferPointerv);
-  }
-  if(!have_ARB_vertex_shader) {
-    stub_proc_address(VertexAttrib1f);
-    stub_proc_address(VertexAttrib1s);
-    stub_proc_address(VertexAttrib1d);
-    stub_proc_address(VertexAttrib2f);
-    stub_proc_address(VertexAttrib2s);
-    stub_proc_address(VertexAttrib2d);
-    stub_proc_address(VertexAttrib3f);
-    stub_proc_address(VertexAttrib3s);
-    stub_proc_address(VertexAttrib3d);
-    stub_proc_address(VertexAttrib4f);
-    stub_proc_address(VertexAttrib4s);
-    stub_proc_address(VertexAttrib4d);                               
-    stub_proc_address(VertexAttrib4Nub);
-    stub_proc_address(VertexAttrib1fv);
-    stub_proc_address(VertexAttrib1sv);
-    stub_proc_address(VertexAttrib1dv);
-    stub_proc_address(VertexAttrib2fv);
-    stub_proc_address(VertexAttrib2sv);
-    stub_proc_address(VertexAttrib2dv);
-    stub_proc_address(VertexAttrib3fv);
-    stub_proc_address(VertexAttrib3sv);
-    stub_proc_address(VertexAttrib3dv);
-    stub_proc_address(VertexAttrib4fv);
-    stub_proc_address(VertexAttrib4sv);
-    stub_proc_address(VertexAttrib4dv);
-    stub_proc_address(VertexAttrib4iv);
-    stub_proc_address(VertexAttrib4bv);
-    stub_proc_address(VertexAttrib4ubv);
-    stub_proc_address(VertexAttrib4usv);
-    stub_proc_address(VertexAttrib4uiv);
-    stub_proc_address(VertexAttrib4Nbv);
-    stub_proc_address(VertexAttrib4Nsv);
-    stub_proc_address(VertexAttrib4Niv);
-    stub_proc_address(VertexAttrib4Nubv);
-    stub_proc_address(VertexAttrib4Nusv);
-    stub_proc_address(VertexAttrib4Nuiv);
-    stub_proc_address(VertexAttribPointer);
-    stub_proc_address(EnableVertexAttribArray);
-    stub_proc_address(DisableVertexAttribArray);
-    stub_proc_address(BindAttribLocation);
-    stub_proc_address(GetActiveAttrib);
-    stub_proc_address(GetAttribLocation);
-    stub_proc_address(GetVertexAttribdv);
-    stub_proc_address(GetVertexAttribfv);
-    stub_proc_address(GetVertexAttribiv);
-    stub_proc_address(GetVertexAttribPointerv);
+    extension_is_dead:
+    if(!ext.presence_flag) {
+      dprintf("%s is not present.\n", ext.name);
+      for(auto proc = ext.procs; proc->names != NULL; ++proc) {
+        *proc->addr = (void*)extension_stub;
+      }
+    }
   }
 }
