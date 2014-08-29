@@ -7,8 +7,17 @@ using namespace Video;
 
 uint32_t Video::opengl_context_cookie = 0;
 
+#ifndef DEFAULT_WINDOWED_WIDTH
+#define DEFAULT_WINDOWED_WIDTH 640
+#endif
+
+#ifndef DEFAULT_WINDOWED_HEIGHT
+#define DEFAULT_WINDOWED_HEIGHT 480
+#endif
+
 int32_t Video::fullscreen_width = 0, Video::fullscreen_height = 0;
-int32_t Video::windowed_width = 640, Video::windowed_height = 480;
+int32_t Video::windowed_width = DEFAULT_WINDOWED_WIDTH,
+  Video::windowed_height = DEFAULT_WINDOWED_HEIGHT;
 bool Video::fullscreen_mode = true;
 bool Video::vsync = false;
 
