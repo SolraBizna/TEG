@@ -146,6 +146,14 @@ static struct extension_element {
     xgl::have_ARB_fragment_shader, (bool*[]){&xgl::have_ARB_shader_objects, NULL},
     NO_PROCS
   },
+  {
+    2, 0, 0,
+    "GL_ARB_draw_buffers", NULL,
+    xgl::have_ARB_draw_buffers, NULL,
+    BEGIN_PROCS
+    ARB_PROC(DrawBuffers)
+    END_PROCS
+  },
 };
 
 static size_t bad_fast_token_hash(const char* src) {

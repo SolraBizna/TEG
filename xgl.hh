@@ -161,6 +161,9 @@ namespace xgl {
   EXTERN void (*GetVertexAttribiv)(GLuint index, GLenum pname, GLint *params);
   EXTERN void (*GetVertexAttribPointerv)(GLuint index,
                                          GLenum pname, void **pointer);
+  /* ARB_draw_buffers */
+  EXTERN bool have_ARB_draw_buffers;
+  EXTERN void (*DrawBuffers)(GLsizei n, const GLenum* bufs);
 };
 
 #define REQUIRE_EXTENSION(ext) if(!xgl::have_##ext) die("Your video hardware does not support %s, and is therefore not supported.", #ext)
