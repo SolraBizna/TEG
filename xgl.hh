@@ -164,6 +164,49 @@ namespace xgl {
   /* ARB_draw_buffers */
   EXTERN bool have_ARB_draw_buffers;
   EXTERN void (*DrawBuffers)(GLsizei n, const GLenum* bufs);
+  /* ARB_framebuffer_object */
+  EXTERN bool have_ARB_framebuffer_object;
+  EXTERN GLboolean (*IsRenderbuffer)(GLuint renderbuffer);
+  EXTERN void (*BindRenderbuffer)(GLenum target, GLuint renderbuffer);
+  EXTERN void (*DeleteRenderbuffers)(GLsizei n, const GLuint* renderbuffers);
+  EXTERN void (*GenRenderbuffers)(GLsizei n, GLuint* renderbuffers);
+  EXTERN void (*RenderbufferStorage)(GLenum target, GLenum internalformat,
+                                     GLsizei width, GLsizei height);
+  EXTERN void (*RenderbufferStorageMultisample)(GLenum target, GLsizei samples,
+                                                GLenum internalformat,
+                                                GLsizei width, GLsizei height);
+  EXTERN void (*GetRenderbufferParameteriv)(GLenum target, GLenum pname,
+                                            GLint* params);
+  EXTERN GLboolean (*IsFramebuffer)(GLuint framebuffer);
+  EXTERN void (*BindFramebuffer)(GLenum target, GLuint framebuffer);
+  EXTERN void (*DeleteFramebuffers)(GLsizei n, const GLuint* framebuffers);
+  EXTERN void (*GenFramebuffers)(GLsizei n, GLuint* framebuffers);
+  EXTERN GLenum (*CheckFramebufferStatus)(GLenum target);
+  EXTERN void (*FramebufferTexture1D)(GLenum target, GLenum attachment,
+                                      GLenum textarget, GLuint texture,
+                                      GLint level);
+  EXTERN void (*FramebufferTexture2D)(GLenum target, GLenum attachment,
+                                      GLenum textarget, GLuint texture,
+                                      GLint level);
+  EXTERN void (*FramebufferTexture3D)(GLenum target, GLenum attachment,
+                                      GLenum textarget, GLuint texture,
+                                      GLint level, GLint layer);
+  EXTERN void (*FramebufferTextureLayer)(GLenum target, GLenum attachment,
+                                         GLuint texture, GLint level,
+                                         GLint layer);
+  EXTERN void (*FramebufferRenderbuffer)(GLenum target, GLenum attachment,
+                                         GLenum renderbuffertarget,
+                                         GLuint renderbuffer);
+  EXTERN void (*GetFramebufferAttachmentParameteriv)(GLenum target,
+                                                     GLenum attachment,
+                                                     GLenum pname,
+                                                     GLint* params);
+  EXTERN void (*BlitFramebuffer)(GLint srcX0, GLint srcY0,
+                                 GLint srcX1, GLint srcY1,
+                                 GLint dstX0, GLint dstY0,
+                                 GLint dstX1, GLint dstY1,
+                                 GLbitfield mask, GLenum filter);
+  EXTERN void (*GenerateMipmap)(GLenum target);
 };
 
 #define REQUIRE_EXTENSION(ext) if(!xgl::have_##ext) die("Your video hardware does not support %s, and is therefore not supported.", #ext)

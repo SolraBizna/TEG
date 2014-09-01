@@ -154,6 +154,33 @@ static struct extension_element {
     ARB_PROC(DrawBuffers)
     END_PROCS
   },
+  {
+    3, 0, 0,
+    "GL_ARB_framebuffer_object", NULL,
+    xgl::have_ARB_framebuffer_object, NULL,
+    BEGIN_PROCS
+    ARB_PROC(IsRenderbuffer)
+    ARB_PROC(BindRenderbuffer)
+    ARB_PROC(DeleteRenderbuffers)
+    ARB_PROC(GenRenderbuffers)
+    ARB_PROC(RenderbufferStorage)
+    ARB_PROC(RenderbufferStorageMultisample)
+    ARB_PROC(GetRenderbufferParameteriv)
+    ARB_PROC(IsFramebuffer)
+    ARB_PROC(BindFramebuffer)
+    ARB_PROC(DeleteFramebuffers)
+    ARB_PROC(GenFramebuffers)
+    ARB_PROC(CheckFramebufferStatus)
+    ARB_PROC(FramebufferTexture1D)
+    ARB_PROC(FramebufferTexture2D)
+    ARB_PROC(FramebufferTexture3D)
+    ARB_PROC(FramebufferTextureLayer)
+    ARB_PROC(FramebufferRenderbuffer)
+    ARB_PROC(GetFramebufferAttachmentParameteriv)
+    ARB_PROC(BlitFramebuffer)
+    ARB_PROC(GenerateMipmap)
+    END_PROCS
+  },
 };
 
 static size_t bad_fast_token_hash(const char* src) {
