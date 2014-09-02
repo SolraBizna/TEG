@@ -275,8 +275,8 @@ void xgl::Initialize() {
    || (core_major_version == (major) \
        && (core_minor_version > (minor) \
            || (core_minor_version == (minor) && core_patch_version >= (patch)))))
-  if(!MIN_VERSION(1, 2)) {
-    die("We require OpenGL 1.2 or later. Your OpenGL appears to be version"
+  if(!MIN_FULL_VERSION(1, 2, 1)) {
+    die("We require OpenGL 1.2.1 or later. Your OpenGL appears to be version"
         " %u.%u.%u. We are frankly amazed that you managed to obtain such an"
         " ancient OpenGL version. We might be willing to try to make this"
         " work on your OpenGL version if you get in touch with us.",
