@@ -5,7 +5,8 @@
 
 using namespace Video;
 
-uint32_t Video::opengl_context_cookie = 0;
+const uint32_t Video::uninitialized_context_cookie = 0;
+uint32_t Video::opengl_context_cookie = uninitialized_context_cookie;
 
 #ifndef DEFAULT_WINDOWED_WIDTH
 #define DEFAULT_WINDOWED_WIDTH 640

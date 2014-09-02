@@ -6,6 +6,10 @@
 namespace Video {
   /* This value will change every time a new OpenGL context is made. */
   extern uint32_t opengl_context_cookie;
+  /* The above value will be set to this value until the first OpenGL context
+     is made, and never* again after.
+     * except if the user makes a LOT of contexts... */
+  extern const uint32_t uninitialized_context_cookie;
   extern int32_t fullscreen_width, fullscreen_height;
   extern int32_t windowed_width, windowed_height;
   extern bool fullscreen_mode, vsync;
