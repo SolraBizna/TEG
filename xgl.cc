@@ -3,7 +3,7 @@
 
 #include <unordered_set>
 
-static struct extension_element {
+static const struct extension_element {
   unsigned int min_major_version, min_minor_version, min_patch_version;
   const char* name;
   const char** aliases;
@@ -15,6 +15,7 @@ static struct extension_element {
 } extensions[] = {
 #define BEGIN_PROCS (const extension_element::proc_element[]){
 #define ARB_PROC(name) {(const char*[]){"gl" #name "ARB", "gl" #name, NULL}, (void**)&xgl::name},
+#define EXT_PROC(name) {(const char*[]){"gl" #name "EXT", "gl" #name, NULL}, (void**)&xgl::name},
 #define END_PROCS {NULL, NULL}}
 #define NO_PROCS BEGIN_PROCS END_PROCS
   {
@@ -155,10 +156,52 @@ static struct extension_element {
     END_PROCS
   },
   {
+    0, 0, 0,
+    "GL_EXT_framebuffer_object", NULL,
+    xgl::have_EXT_framebuffer_object, NULL,
+    BEGIN_PROCS
+    EXT_PROC(IsRenderbuffer)
+    EXT_PROC(BindRenderbuffer)
+    EXT_PROC(DeleteRenderbuffers)
+    EXT_PROC(GenRenderbuffers)
+    EXT_PROC(RenderbufferStorage)
+    EXT_PROC(GetRenderbufferParameteriv)
+    EXT_PROC(IsFramebuffer)
+    EXT_PROC(BindFramebuffer)
+    EXT_PROC(DeleteFramebuffers)
+    EXT_PROC(GenFramebuffers)
+    EXT_PROC(CheckFramebufferStatus)
+    EXT_PROC(FramebufferTexture1D)
+    EXT_PROC(FramebufferTexture2D)
+    EXT_PROC(FramebufferTexture3D)
+    EXT_PROC(FramebufferRenderbuffer)
+    EXT_PROC(GetFramebufferAttachmentParameteriv)
+    EXT_PROC(GenerateMipmap)
+    END_PROCS
+  },
+  {
+    0, 0, 0,
+    "GL_EXT_framebuffer_blit", NULL,
+    xgl::have_EXT_framebuffer_blit, (bool*[]){&xgl::have_EXT_framebuffer_object, NULL},
+    BEGIN_PROCS
+    EXT_PROC(BlitFramebuffer)
+    END_PROCS
+  },
+  {
+    0, 0, 0,
+    "GL_EXT_framebuffer_multisample", NULL,
+    xgl::have_EXT_framebuffer_multisample, (bool*[]){&xgl::have_EXT_framebuffer_object, NULL},
+    BEGIN_PROCS
+    EXT_PROC(RenderbufferStorageMultisample)
+    END_PROCS
+  },
+  {
     3, 0, 0,
     "GL_ARB_framebuffer_object", NULL,
     xgl::have_ARB_framebuffer_object, NULL,
     BEGIN_PROCS
+    /* Overwrite the procs for EXT_framebuffer_* if ARB_framebuffer_object is
+       available */
     ARB_PROC(IsRenderbuffer)
     ARB_PROC(BindRenderbuffer)
     ARB_PROC(DeleteRenderbuffers)
@@ -218,20 +261,31 @@ static void chunkify_extension_list(std::unordered_set<const char*,
   }
 }
 
-static bool set_proc_address(const extension_element& ext,
+static bool check_proc_address(const extension_element& ext,
                              const extension_element::proc_element& proc) {
-  *proc.addr = NULL;
+  const char** p = proc.names;
+  while(*p) {
+    void* addr = SDL_GL_GetProcAddress(*p);
+    if(addr != NULL)
+      return true;
+  }
+  fprintf(stderr, "xgl: Unable to find any implementation of %s\n",
+          ext.name);
+  return false;
+}
+
+static void set_proc_address(const extension_element& ext,
+                             const extension_element::proc_element& proc) {
   const char** p = proc.names;
   while(*p) {
     void* addr = SDL_GL_GetProcAddress(*p);
     if(addr != NULL) {
       *proc.addr = addr;
-      return true;
+      return;
     }
   }
-  fprintf(stderr, "xgl: Unable to find any implementation of %s\n",
-          ext.name);
-  return false;
+  die("xgl: proc related to %s disappeared!",
+      ext.name);
 }
 
 static void extension_stub() {
@@ -271,10 +325,11 @@ void xgl::Initialize() {
   (core_major_version > (major) \
    || (core_major_version == (major) && core_minor_version >= (minor)))
 #define MIN_FULL_VERSION(major,minor,patch) \
-  (core_major_version > (major) \
+  (((major) || (minor) || (patch)) && \
+  ((core_major_version > (major)            \
    || (core_major_version == (major) \
        && (core_minor_version > (minor) \
-           || (core_minor_version == (minor) && core_patch_version >= (patch)))))
+           || (core_minor_version == (minor) && core_patch_version >= (patch)))))))
   if(!MIN_FULL_VERSION(1, 2, 1)) {
     die("We require OpenGL 1.2.1 or later. Your OpenGL appears to be version"
         " %u.%u.%u. We are frankly amazed that you managed to obtain such an"
@@ -327,6 +382,11 @@ void xgl::Initialize() {
     }
   }
   for(auto ext : extensions) {
+    for(auto proc = ext.procs; proc->names != NULL; ++proc) {
+      *proc->addr = (void*)extension_stub;
+    }
+  }
+  for(auto ext : extensions) {
     ext.presence_flag = false;
     if(ext.deps != NULL) {
       for(bool** p = ext.deps; *p != NULL; ++p) {
@@ -347,19 +407,26 @@ void xgl::Initialize() {
                                            ext.min_patch_version);
       ext.presence_flag = true;
       for(auto proc = ext.procs; proc->names != NULL; ++proc) {
-        if(!set_proc_address(ext, *proc)) {
+        if(!check_proc_address(ext, *proc)) {
           ext.presence_flag = false;
           goto extension_is_dead;
         }
       }
+      for(auto proc = ext.procs; proc->names != NULL; ++proc) {
+        set_proc_address(ext, *proc);
+      }
       dprintf("Found procs for %s.\n", ext.name);
     }
     extension_is_dead:
-    if(!ext.presence_flag) {
+    if(!ext.presence_flag)
       dprintf("%s is not present.\n", ext.name);
-      for(auto proc = ext.procs; proc->names != NULL; ++proc) {
-        *proc->addr = (void*)extension_stub;
-      }
-    }
+  }
+  /* stuff not easily covered descriptively */
+  if(have_ARB_framebuffer_object) {
+    /* doubtful that there are any implementations for which this is needed,
+       but still we press on */
+    have_EXT_framebuffer_object = true;
+    have_EXT_framebuffer_blit = true;
+    have_EXT_framebuffer_multisample = true;
   }
 }
