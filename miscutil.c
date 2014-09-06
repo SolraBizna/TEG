@@ -53,6 +53,15 @@ extern void _assertgl(const char* file, int line, const char* name) {
 #endif
 }
 
+extern char* teg_strdup(const char* src) {
+  /* Very annoyed at Microsoft right now. */
+  if(src == NULL) return NULL;
+  size_t len = strlen(src) + 1;
+  char* ret = (char*)safe_malloc(len);
+  memcpy(ret, src, len);
+  return ret;
+}
+
 extern void die(const char* format, ...) {
   char error[1920]; // enough to fill up an 80x24 terminal
   va_list arg;

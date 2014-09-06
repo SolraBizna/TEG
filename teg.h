@@ -55,6 +55,8 @@ extern void* calloc(size_t nmemb, size_t size) __attribute__((error("Use safe_ca
 extern void* realloc(void* ptr, size_t size) __attribute__((error("Use safe_realloc instead.")));
 #endif
 
+extern char* strdup(const char* src) __attribute__((error("Use teg_strdup instead.")));
+
 /* Versions of the standard C allocation functions that are guaranteed to
    conform to our expectations. */
 /* safe_malloc(0) returns NULL, otherwise it always succeeds. */
@@ -67,6 +69,9 @@ extern void* safe_calloc(size_t nmemb, size_t size)  __attribute__((malloc));
    safe_realloc(x,0) frees x and returns NULL.
    otherwise, it always succeeds (and returns the new pointer). */
 extern void* safe_realloc(void* ptr, size_t size);
+
+/* Portable version of strdup. */
+extern char* teg_strdup(const char* src);
 
 /* Display an error message to the user and then EXPLODE! */
 extern void die(const char* format, ...) __attribute__((noreturn,

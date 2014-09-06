@@ -7,24 +7,25 @@
 
 static FILE* OpenDataFileForReadStupidWindowsHack(const char* path);
 
-#define MAX_DATA_PATH_LEN 128 // plenty too big already
+using teg::auto_cstring;
+
 FILE* IO::OpenDataFileForRead(const char* format, ...) {
-  char buffer[MAX_DATA_PATH_LEN];
+  auto_cstring path;
   va_list arg;
   va_start(arg, format);
-  vsnprintf(buffer, sizeof(buffer), format, arg);
+  path.vformat(format, arg);
   va_end(arg);
   {
-    for(char* p = buffer; *p; ++p) {
-      if(*p == '.' && (p == buffer || p[-1] == '/'))
-        die("Attempt to access an illegal datafile path: %s", buffer);
+    for(char* p = *path; *p; ++p) {
+      if(*p == '.' && (p == *path || p[-1] == '/'))
+        die("Attempt to access an illegal datafile path: %s", *path);
       else if(*DIR_SEP != '/') {
         if(*p == '/') *p = *DIR_SEP;
         else if(*p == *DIR_SEP) *p = '/';
       }
     }
   }
-  return OpenDataFileForReadStupidWindowsHack(buffer);
+  return OpenDataFileForReadStupidWindowsHack(*path);
 }
 
 #ifdef __WIN32__
