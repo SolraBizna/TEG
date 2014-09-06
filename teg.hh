@@ -67,9 +67,10 @@ namespace teg {
       va_end(arg);
     }
     void vformat(const char* format, va_list arg) {
-      p = NULL;
-      asprintf(&p, format, arg);
-      assert(p);
+      char* new_p;
+      asprintf(&new_p, format, arg);
+      assert(new_p);
+      *this = new_p;
     }
   };
 }
