@@ -14,8 +14,8 @@ namespace teg {
   class auto_cstring {
     char* p;
   public:
-    auto_cstring() : p(NULL) {}
-    auto_cstring(char* p) : p(p) {}
+    auto_cstring() noexcept : p(NULL) {}
+    auto_cstring(char* p) noexcept : p(p) {}
     auto_cstring(const char* p) : p(NULL) {
       if(p != NULL)
         this->p = teg_strdup(p);
@@ -24,7 +24,7 @@ namespace teg {
       if(o.p != NULL)
         p = teg_strdup(o.p);
     }
-    auto_cstring(auto_cstring&& o) : p(NULL) {
+    auto_cstring(auto_cstring&& o) noexcept : p(NULL) {
       p = o.p;
       o.p = NULL;
     }
@@ -58,8 +58,8 @@ namespace teg {
       }
       return *this;
     }
-    char* operator*() const { return p; }
-    operator char*() const { return p; }
+    char* operator*() const noexcept { return p; }
+    operator char*() const noexcept { return p; }
     void format(const char* format, ...) {
       va_list arg;
       va_start(arg, format);
