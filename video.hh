@@ -16,6 +16,8 @@ namespace Video {
   void Init(); // can be called repeatedly, if you want
   void ReadConfig(); // should be called once, when the program starts
   void WriteConfig(); // should be called if changed values are to be saved
+  uint32_t GetScreenWidth();
+  uint32_t GetScreenHeight();
   double GetAspect(); // return aspect ratio of screen
   void Swap(); // swap buffers
 };
