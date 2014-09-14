@@ -427,11 +427,11 @@ void xgl::Initialize() {
       for(auto proc = ext.procs; proc->names != NULL; ++proc) {
         set_proc_address(ext, *proc);
       }
-      dprintf("%s is present.\n", ext.name);
+      dprintf("Found: %s\n", ext.name);
     }
     extension_is_dead:
     if(!ext.presence_flag)
-      dprintf("%s is not present.\n", ext.name);
+      dprintf("(missing %s)\n", ext.name);
   }
   /* stuff not easily covered descriptively */
   if(have_ARB_framebuffer_object) {
