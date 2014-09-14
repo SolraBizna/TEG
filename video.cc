@@ -92,13 +92,13 @@ void Video::WriteConfig() {
   Config::Write(video_config_file, video_config_elements, elementcount(video_config_elements));
 }
 
-uint32_t GetScreenWidth() {
+uint32_t Video::GetScreenWidth() {
   int w, h;
   SDL_GL_GetDrawableSize(window, &w, &h);
   return w;
 }
 
-uint32_t GetScreenHeight() {
+uint32_t Video::GetScreenHeight() {
   int w, h;
   SDL_GL_GetDrawableSize(window, &w, &h);
   return h;
