@@ -29,6 +29,10 @@ namespace xgl {
   EXTERN void(*GetBufferPointerv)(GLenum target, GLenum pname, void** v);
   /* ARB_texture_rectangle */
   EXTERN bool have_ARB_texture_rectangle;
+  /* EXT_texture_sRGB */
+  EXTERN bool have_EXT_texture_sRGB;
+  /* EXT_framebuffer_sRGB */
+  EXTERN bool have_EXT_framebuffer_sRGB;
   /* ARB_shader_objects */
   EXTERN bool have_ARB_shader_objects;
   EXTERN void (*DeleteObject)(GLhandleARB obj);

@@ -25,6 +25,18 @@ static const struct extension_element {
     NO_PROCS
   },
   {
+    0, 0, 0,
+    "GL_EXT_framebuffer_sRGB", NULL,
+    xgl::have_EXT_framebuffer_sRGB, NULL,
+    NO_PROCS
+  },
+  {
+    0, 0, 0,
+    "GL_EXT_texture_sRGB", NULL,
+    xgl::have_EXT_texture_sRGB, NULL,
+    NO_PROCS
+  },
+  {
     1, 5, 0,
     "GL_ARB_vertex_buffer_object", NULL,
     xgl::have_ARB_vertex_buffer_object, NULL,
@@ -415,7 +427,7 @@ void xgl::Initialize() {
       for(auto proc = ext.procs; proc->names != NULL; ++proc) {
         set_proc_address(ext, *proc);
       }
-      dprintf("Found procs for %s.\n", ext.name);
+      dprintf("%s is present.\n", ext.name);
     }
     extension_is_dead:
     if(!ext.presence_flag)
