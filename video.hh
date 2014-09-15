@@ -14,6 +14,7 @@ namespace Video {
   extern int32_t windowed_width, windowed_height;
   extern bool fullscreen_mode, vsync;
   void Init(); // can be called repeatedly, if you want
+  void Kill();
   void ReadConfig(); // should be called once, when the program starts
   void WriteConfig(); // should be called if changed values are to be saved
   uint32_t GetScreenWidth();

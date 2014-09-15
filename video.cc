@@ -34,8 +34,21 @@ static const Config::Element video_config_elements[] = {
 
 static SDL_Window* window = NULL;
 static SDL_GLContext glcontext = NULL;
+static bool inited = false;
+
+void Video::Kill() {
+  if(inited) {
+    SDL_Quit();
+    inited = false;
+  }
+}
 
 void Video::Init() {
+  if(!inited) {
+    if(SDL_Init(SDL_INIT_VIDEO))
+      die("Couldn't initialize SDL!");
+    inited = true;
+  }
   if(glcontext) SDL_GL_DeleteContext(glcontext);
   if(window) SDL_DestroyWindow(window);
   int target_w, target_h;

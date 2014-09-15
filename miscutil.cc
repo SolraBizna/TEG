@@ -1,5 +1,6 @@
 #define NO_MASK_MALLOC 1
-#include "teg.h"
+#include "teg.hh"
+#include "video.hh"
 
 #include <stdarg.h>
 
@@ -68,8 +69,7 @@ extern void die(const char* format, ...) {
   va_start(arg, format);
   vsnprintf(error, sizeof(error), format, arg);
   va_end(arg);
-  /* TODO: replace fourth parameter with game window */
-  /* TODO: exit fullscreen mode before displaying error */
+  Video::Kill();
   if(SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR,
                               GAME_PRETTY_NAME" encountered a fatal error.",
                               error, NULL)) {
