@@ -53,11 +53,13 @@ static int safely_read(lua_State* L) {
           size_t length;
           const char* str = lua_tolstring(L, -1, &length);
           if(str != NULL) {
-            if(length >= elements[n].size)
-              fprintf(stderr, "config file %s: string \"%s\" too long (max size %i)\n",
-                      filename, elements[n].name, (int)elements[n].size);
-            else
-              strcpy((char*)elements[n].ptr, str);
+            for(const char* p = str; p < str + length; ++p) {
+              if(!*p) {
+                fprintf(stderr, "config file %s: warning: string \"%s\" contained embedded NULs!\n", filename, elements[n].name);
+                break;
+              }
+            }
+            *(std::string*)elements[n].ptr = std::string(str, length);
           }
         } break;
       case Int32:

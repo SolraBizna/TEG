@@ -81,3 +81,32 @@ extern void die(const char* format, ...) {
   }
   exit(1);
 }
+
+std::string TEG::format(const char* format, ...) {
+  va_list arg;
+  va_start(arg, format);
+  std::string ret = TEG::vformat(format, arg);
+  va_end(arg);
+  return ret;
+}
+
+std::string TEG::vformat(const char* format, va_list arg) {
+  char* new_p = NULL;
+  vasprintf(&new_p, format, arg);
+  assert(new_p);
+  std::string ret = std::string(new_p);
+  safe_free(new_p);
+  return ret;
+}
+
+std::string TEG::format(const std::string& format, ...) {
+  va_list arg;
+  va_start(arg, format);
+  std::string ret = TEG::vformat(format.c_str(), arg);
+  va_end(arg);
+  return ret;
+}
+
+std::string TEG::vformat(const std::string& format, va_list arg) {
+  return TEG::vformat(format.c_str(), arg);
+}
