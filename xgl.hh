@@ -17,12 +17,12 @@ namespace xgl {
   EXTERN void(*DeleteBuffers)(GLsizei n, const GLuint* buffers);
   EXTERN void(*GenBuffers)(GLsizei n, GLuint* buffers);
   EXTERN GLboolean(*IsBuffer)(GLuint buffer);
-  EXTERN void(*BufferData)(GLenum target, GLsizei* size,
+  EXTERN void(*BufferData)(GLenum target, GLsizeiptr size,
                            const void* data, GLenum usage);
-  EXTERN void(*BufferSubData)(GLenum target, GLint* offset, GLsizei* size,
+  EXTERN void(*BufferSubData)(GLenum target, GLintptr offset, GLsizeiptr size,
                               const void* data);
-  EXTERN void(*GetBufferSubData)(GLenum target, GLint* offset, GLsizei* size,
-                                 void* data);
+  EXTERN void(*GetBufferSubData)(GLenum target, GLintptr offset,
+                                 GLsizeiptr size, void* data);
   EXTERN void*(*MapBuffer)(GLenum target, GLenum access);
   EXTERN GLboolean(*UnmapBuffer)(GLenum target);
   EXTERN void(*GetBufferParameteriv)(GLenum target, GLenum pname, GLint* v);
