@@ -7,25 +7,23 @@
 
 static FILE* OpenDataFileForReadStupidWindowsHack(const char* path);
 
-using teg::auto_cstring;
-
 FILE* IO::OpenDataFileForRead(const char* format, ...) {
-  auto_cstring path;
+  std::string path;
   va_list arg;
   va_start(arg, format);
-  path.vformat(format, arg);
+  path = TEG::vformat(format, arg);
   va_end(arg);
   {
-    for(char* p = *path; *p; ++p) {
-      if(*p == '.' && (p == *path || p[-1] == '/'))
-        die("Attempt to access an illegal datafile path: %s", *path);
+    for(char* p = const_cast<char*>(path.c_str()); *p; ++p) {
+      if(*p == '.' && (p == path.c_str() || p[-1] == '/'))
+        die("Attempt to access an illegal datafile path: %s", path.c_str());
       else if(*DIR_SEP != '/') {
         if(*p == '/') *p = *DIR_SEP;
         else if(*p == *DIR_SEP) *p = '/';
       }
     }
   }
-  return OpenDataFileForReadStupidWindowsHack(*path);
+  return OpenDataFileForReadStupidWindowsHack(path.c_str());
 }
 
 #ifdef __WIN32__
@@ -270,6 +268,29 @@ static TCHAR* get_data_path(const char* in_filename) {
 
 FILE* OpenDataFileForReadStupidWindowsHack(const char* filename) {
   TCHAR* path = get_data_path(filename);
+  FILE* ret = fopen(path, _T("rb"));
+  if(!ret) {
+    perror(path);
+  }
+  safe_free(path);
+  return ret;
+}
+
+static TCHAR* get_raw_path(const char* in_path) {
+  TCHAR* path;
+#if __WIN32__ && _UNICODE
+  int string_length = MultiByteToWideChar(CP_UTF8, 0, in_path, -1, NULL, 0);
+  path = reinterpret_cast<TCHAR*>(safe_malloc(string_length * sizeof(TCHAR)));
+  MultiByteToWideChar(CP_UTF8, 0, in_filename, -1, filename, string_length);
+#else
+  path = teg_strdup(in_path);
+#endif
+  clean_dirseps(path);
+  return path;
+}
+
+FILE* IO::OpenRawPathForRead(const char* filename) {
+  TCHAR* path = get_raw_path(filename);
   FILE* ret = fopen(path, _T("rb"));
   if(!ret) {
     perror(path);

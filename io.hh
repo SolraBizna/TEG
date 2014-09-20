@@ -10,6 +10,7 @@
 namespace IO {
   FILE* OpenDataFileForRead(const char* format, ...)
   __attribute__((format(printf,1,2)));
+  FILE* OpenRawPathForRead(const char* path);
   FILE* OpenConfigFileForRead(const char* filename);
   FILE* OpenConfigFileForWrite(const char* filename);
   void UpdateConfigFile(const char* filename);
