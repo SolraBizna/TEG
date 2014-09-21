@@ -70,14 +70,15 @@ extern void die(const char* format, ...) {
   vsnprintf(error, sizeof(error), format, arg);
   va_end(arg);
   Video::Kill();
+  fprintf(stderr, "%s encountered a fatal error:\n%s\n", GAME_PRETTY_NAME,
+          error);
   if(SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR,
                               GAME_PRETTY_NAME" encountered a fatal error.",
                               error, NULL)) {
     fprintf(stderr,
-            "%s encountered a fatal error:\n%s\n"
             "Additionally, there was an error when attempting to use SDL to"
             " display this\nerror message: %s\n",
-            GAME_PRETTY_NAME, error, SDL_GetError());
+            SDL_GetError());
   }
   exit(1);
 }
