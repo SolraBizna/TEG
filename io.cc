@@ -80,7 +80,7 @@ typedef char TCHAR; //I love Windows!
 #endif
 #define CONFIG_EXT ".utxt"
 
-#define DATA_BASE_DIR "data"
+#define DATA_BASE_DIR "Data"
 
 extern "C" const TCHAR* g_argv0;
 
