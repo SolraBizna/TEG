@@ -280,6 +280,7 @@ static bool check_proc_address(const extension_element& ext,
     void* addr = SDL_GL_GetProcAddress(*p);
     if(addr != NULL)
       return true;
+    ++p;
   }
   fprintf(stderr, "xgl: Unable to find any implementation of %s\n",
           ext.name);
@@ -295,6 +296,7 @@ static void set_proc_address(const extension_element& ext,
       *proc.addr = addr;
       return;
     }
+    ++p;
   }
   die("xgl: proc related to %s disappeared!",
       ext.name);
