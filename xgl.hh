@@ -29,9 +29,16 @@ namespace xgl {
   EXTERN void(*GetBufferParameteriv)(GLenum target, GLenum pname, GLint* v);
   EXTERN void(*GetBufferPointerv)(GLenum target, GLenum pname, void** v);
 #endif
-#if XGL_ENABLE_TEXTURE_RECTANGLE
+#if XGL_ENABLE_RECTANGLE_TEXTURES
   /* ARB_texture_rectangle */
   EXTERN bool have_ARB_texture_rectangle;
+  EXTERN bool have_quirk_ARB_texture_rectangle_no_filtering;
+#endif
+#if XGL_ENABLE_FLOAT_TEXTURES
+  /* ARB_texture_float */
+  EXTERN bool have_ARB_texture_float;
+  EXTERN bool have_quirk_ARB_texture_float_half_no_filtering;
+  EXTERN bool have_quirk_ARB_texture_float_single_no_filtering;
 #endif
 #if XGL_ENABLE_SRGB
   /* EXT_texture_sRGB */

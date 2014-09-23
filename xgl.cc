@@ -1,5 +1,6 @@
 #define WE_ARE_XGL 1
 #include "xgl.hh"
+#include "video.hh"
 
 #include <unordered_set>
 
@@ -18,11 +19,19 @@ static const struct extension_element {
 #define EXT_PROC(name) {(const char*[]){"gl" #name "EXT", "gl" #name, NULL}, (void**)&xgl::name},
 #define END_PROCS {NULL, NULL}}
 #define NO_PROCS BEGIN_PROCS END_PROCS
-#if XGL_ENABLE_TEXTURE_RECTANGLE
+#if XGL_ENABLE_RECTANGLE_TEXTURES
   {
     2, 1, 0,
     "GL_ARB_texture_rectangle", (const char*[]){"GL_EXT_texture_rectangle","GL_NV_texture_rectangle",NULL},
     xgl::have_ARB_texture_rectangle, NULL,
+    NO_PROCS
+  },
+#endif
+#if XGL_ENABLE_FLOAT_TEXTURES
+  {
+    0, 0, 0,
+    "GL_ARB_texture_float", NULL,
+    xgl::have_ARB_texture_float, NULL,
     NO_PROCS
   },
 #endif
@@ -248,6 +257,156 @@ static const struct extension_element {
 #endif
 };
 
+static const struct quirk_element {
+  bool& quirk_flag;
+  const char* quirk_name;
+  bool(*should_check_quirk)();
+  bool(*check_quirk)();
+} quirks[] = {
+#if XGL_ENABLE_RECTANGLE_TEXTURES
+  {xgl::have_quirk_ARB_texture_rectangle_no_filtering,
+   "whether rectangle textures do not support GL_LINEAR filtering",
+   []() {
+      return xgl::have_ARB_texture_rectangle;
+    },
+   []() {
+     const int w = 6, h = 12;
+     glViewport(0,0,w*2,h*2);
+     static_assert(w%2 == 0, "w must be even");
+     GLubyte intex[w*h*4];
+     GLubyte* p = intex;
+     for(int y = 0; y < h; ++y) {
+       for(int x = 0; x < w; ++x) {
+         if(((x^y)&1) == 0) {
+           p[0] = 255; p[1] = 255; p[2] = 255; p[3] = 255;
+         }
+         else {
+           p[0] = 0; p[1] = 0; p[2] = 0; p[3] = 255;
+         }
+         p += 4;
+       }
+     }
+     GLuint test_tex;
+     glGenTextures(1, &test_tex);
+     glBindTexture(GL_TEXTURE_RECTANGLE, test_tex);
+     glTexImage2D(GL_TEXTURE_RECTANGLE, 0, GL_RGBA, w, h, 0,
+                  GL_RGBA, GL_UNSIGNED_BYTE, intex);
+     glTexParameteri(GL_TEXTURE_RECTANGLE, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+     glTexParameteri(GL_TEXTURE_RECTANGLE, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+     glEnable(GL_TEXTURE_RECTANGLE);
+     glBegin(GL_QUADS);
+     glTexCoord2i(0, 0);
+     glVertex2i(-1, -1);
+     glTexCoord2i(w, 0);
+     glVertex2i( 1, -1);
+     glTexCoord2i(w, h);
+     glVertex2i( 1,  1);
+     glTexCoord2i(0, h);
+     glVertex2i(-1,  1);
+     glEnd();
+     glDisable(GL_TEXTURE_RECTANGLE);
+     GLubyte test_pix[TEG_PIXEL_PACK > 4 ? TEG_PIXEL_PACK : 4];
+     glReadPixels(2, 2, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, test_pix);
+     glDeleteTextures(1, &test_tex);
+     return test_pix[0] > 220 || test_pix[0] < 35;
+   }},
+#endif
+#if XGL_ENABLE_FLOAT_TEXTURES
+  {xgl::have_quirk_ARB_texture_float_half_no_filtering,
+   "whether half-precision float textures do not support GL_LINEAR filtering",
+   []() {
+      return xgl::have_ARB_texture_float;
+    },
+   []() {
+     const int w = 6, h = 12;
+     glViewport(0,0,w*2,h*2);
+     static_assert(w%2 == 0, "w must be even");
+     GLfloat intex[w*h*4];
+     GLfloat* p = intex;
+     for(int y = 0; y < h; ++y) {
+       for(int x = 0; x < w; ++x) {
+         if(((x^y)&1) == 0) {
+           p[0] = 1; p[1] = 1; p[2] = 1; p[3] = 1;
+         }
+         else {
+           p[0] = 0; p[1] = 0; p[2] = 0; p[3] = 1;
+         }
+         p += 4;
+       }
+     }
+     GLuint test_tex;
+     glGenTextures(1, &test_tex);
+     glBindTexture(GL_TEXTURE_RECTANGLE, test_tex);
+     glTexImage2D(GL_TEXTURE_RECTANGLE, 0, GL_RGBA16F, w, h, 0,
+                  GL_RGBA, GL_FLOAT, intex);
+     glTexParameteri(GL_TEXTURE_RECTANGLE, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+     glTexParameteri(GL_TEXTURE_RECTANGLE, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+     glEnable(GL_TEXTURE_RECTANGLE);
+     glBegin(GL_QUADS);
+     glTexCoord2i(0, 0);
+     glVertex2i(-1, -1);
+     glTexCoord2i(w, 0);
+     glVertex2i( 1, -1);
+     glTexCoord2i(w, h);
+     glVertex2i( 1,  1);
+     glTexCoord2i(0, h);
+     glVertex2i(-1,  1);
+     glEnd();
+     glDisable(GL_TEXTURE_RECTANGLE);
+     GLfloat test_pix[4];
+     glReadPixels(2, 2, 1, 1, GL_RGBA, GL_FLOAT, test_pix);
+     glDeleteTextures(1, &test_tex);
+     return test_pix[0] > 0.9f || test_pix[0] < 0.1f;
+   }},
+  {xgl::have_quirk_ARB_texture_float_single_no_filtering,
+   "whether single-precision float textures do not support GL_LINEAR filtering",
+   []() {
+      return xgl::have_ARB_texture_float;
+    },
+   []() {
+     const int w = 6, h = 12;
+     glViewport(0,0,w*2,h*2);
+     static_assert(w%2 == 0, "w must be even");
+     GLfloat intex[w*h*4];
+     GLfloat* p = intex;
+     for(int y = 0; y < h; ++y) {
+       for(int x = 0; x < w; ++x) {
+         if(((x^y)&1) == 0) {
+           p[0] = 1; p[1] = 1; p[2] = 1; p[3] = 1;
+         }
+         else {
+           p[0] = 0; p[1] = 0; p[2] = 0; p[3] = 1;
+         }
+         p += 4;
+       }
+     }
+     GLuint test_tex;
+     glGenTextures(1, &test_tex);
+     glBindTexture(GL_TEXTURE_RECTANGLE, test_tex);
+     glTexImage2D(GL_TEXTURE_RECTANGLE, 0, GL_RGBA32F, w, h, 0,
+                  GL_RGBA, GL_FLOAT, intex);
+     glTexParameteri(GL_TEXTURE_RECTANGLE, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+     glTexParameteri(GL_TEXTURE_RECTANGLE, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+     glEnable(GL_TEXTURE_RECTANGLE);
+     glBegin(GL_QUADS);
+     glTexCoord2i(0, 0);
+     glVertex2i(-1, -1);
+     glTexCoord2i(w, 0);
+     glVertex2i( 1, -1);
+     glTexCoord2i(w, h);
+     glVertex2i( 1,  1);
+     glTexCoord2i(0, h);
+     glVertex2i(-1,  1);
+     glEnd();
+     glDisable(GL_TEXTURE_RECTANGLE);
+     GLfloat test_pix[4];
+     glReadPixels(2, 2, 1, 1, GL_RGBA, GL_FLOAT, test_pix);
+     glDeleteTextures(1, &test_tex);
+     return test_pix[0] > 0.9f || test_pix[0] < 0.1f;
+   }},
+#endif
+};
+
 static size_t bad_fast_token_hash(const char* src) {
   size_t result = 0;
   while(*src && *src != ' ')
@@ -455,4 +614,15 @@ void xgl::Initialize() {
     have_EXT_framebuffer_multisample = true;
   }
 #endif
+  for(auto quirk : quirks) {
+    if(quirk.should_check_quirk()) {
+      dprintf("Checking %s...\n", quirk.quirk_name);
+      bool result = quirk.check_quirk();
+      assertgl("while checking quirk");
+      dprintf("  %s\n", result ? "YES!" : "no.");
+      quirk.quirk_flag = result;
+    }
+    else quirk.quirk_flag = false;
+  }
+  glViewport(0, 0, Video::GetScreenWidth(), Video::GetScreenHeight());
 }
