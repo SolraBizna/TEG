@@ -263,6 +263,52 @@ static const struct quirk_element {
   bool(*should_check_quirk)();
   bool(*check_quirk)();
 } quirks[] = {
+  {xgl::have_quirk_ARB_texture_rgb16_no_filtering,
+   "whether RGB16 textures do not support GL_LINEAR filtering",
+   []() {
+      return true;
+    },
+   []() {
+     const int w = 6, h = 12;
+     glViewport(0,0,w*2,h*2);
+     static_assert(w%2 == 0, "w must be even");
+     GLushort intex[w*h*4];
+     GLushort* p = intex;
+     for(int y = 0; y < h; ++y) {
+       for(int x = 0; x < w; ++x) {
+         if(((x^y)&1) == 0) {
+           p[0] = 65535; p[1] = 65535; p[2] = 65535; p[3] = 65535;
+         }
+         else {
+           p[0] = 0; p[1] = 0; p[2] = 0; p[3] = 65535;
+         }
+         p += 4;
+       }
+     }
+     GLuint test_tex;
+     glGenTextures(1, &test_tex);
+     glBindTexture(GL_TEXTURE_RECTANGLE, test_tex);
+     glTexImage2D(GL_TEXTURE_RECTANGLE, 0, GL_RGBA16, w, h, 0,
+                  GL_RGBA, GL_UNSIGNED_SHORT, intex);
+     glTexParameteri(GL_TEXTURE_RECTANGLE, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+     glTexParameteri(GL_TEXTURE_RECTANGLE, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+     glEnable(GL_TEXTURE_RECTANGLE);
+     glBegin(GL_QUADS);
+     glTexCoord2i(0, 0);
+     glVertex2i(-1, -1);
+     glTexCoord2i(w, 0);
+     glVertex2i( 1, -1);
+     glTexCoord2i(w, h);
+     glVertex2i( 1,  1);
+     glTexCoord2i(0, h);
+     glVertex2i(-1,  1);
+     glEnd();
+     glDisable(GL_TEXTURE_RECTANGLE);
+     GLushort test_pix[4];
+     glReadPixels(2, 2, 1, 1, GL_RGBA, GL_UNSIGNED_SHORT, test_pix);
+     glDeleteTextures(1, &test_tex);
+     return test_pix[0] > 58900 || test_pix[0] < 6550;
+   }},
 #if XGL_ENABLE_RECTANGLE_TEXTURES
   {xgl::have_quirk_ARB_texture_rectangle_no_filtering,
    "whether rectangle textures do not support GL_LINEAR filtering",
