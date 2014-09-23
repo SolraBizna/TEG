@@ -18,12 +18,15 @@ static const struct extension_element {
 #define EXT_PROC(name) {(const char*[]){"gl" #name "EXT", "gl" #name, NULL}, (void**)&xgl::name},
 #define END_PROCS {NULL, NULL}}
 #define NO_PROCS BEGIN_PROCS END_PROCS
+#if XGL_ENABLE_TEXTURE_RECTANGLE
   {
     2, 1, 0,
     "GL_ARB_texture_rectangle", (const char*[]){"GL_EXT_texture_rectangle","GL_NV_texture_rectangle",NULL},
     xgl::have_ARB_texture_rectangle, NULL,
     NO_PROCS
   },
+#endif
+#if XGL_ENABLE_SRGB
   {
     0, 0, 0,
     "GL_EXT_framebuffer_sRGB", NULL,
@@ -36,6 +39,8 @@ static const struct extension_element {
     xgl::have_EXT_texture_sRGB, NULL,
     NO_PROCS
   },
+#endif
+#if XGL_ENABLE_VBO
   {
     1, 5, 0,
     "GL_ARB_vertex_buffer_object", NULL,
@@ -54,6 +59,8 @@ static const struct extension_element {
     ARB_PROC(GetBufferPointerv)
     END_PROCS
   },
+#endif
+#if XGL_ENABLE_SHADERS
   {
     2, 0, 0,
     "GL_ARB_shader_objects", NULL,
@@ -159,6 +166,8 @@ static const struct extension_element {
     xgl::have_ARB_fragment_shader, (bool*[]){&xgl::have_ARB_shader_objects, NULL},
     NO_PROCS
   },
+#endif
+#if XGL_ENABLE_FBO
   {
     2, 0, 0,
     "GL_ARB_draw_buffers", NULL,
@@ -236,6 +245,7 @@ static const struct extension_element {
     ARB_PROC(GenerateMipmap)
     END_PROCS
   },
+#endif
 };
 
 static size_t bad_fast_token_hash(const char* src) {
@@ -436,6 +446,7 @@ void xgl::Initialize() {
       dprintf("(missing %s)\n", ext.name);
   }
   /* stuff not easily covered descriptively */
+#if XGL_ENABLE_FBO
   if(have_ARB_framebuffer_object) {
     /* doubtful that there are any implementations for which this is needed,
        but still we press on */
@@ -443,4 +454,5 @@ void xgl::Initialize() {
     have_EXT_framebuffer_blit = true;
     have_EXT_framebuffer_multisample = true;
   }
+#endif
 }

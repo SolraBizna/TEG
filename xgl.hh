@@ -11,6 +11,7 @@
 
 namespace xgl {
   void Initialize();
+#if XGL_ENABLE_VBO
   /* ARB_vertex_buffer_object */
   EXTERN bool have_ARB_vertex_buffer_object;
   EXTERN void(*BindBuffer)(GLenum target, GLuint buffer);
@@ -27,12 +28,18 @@ namespace xgl {
   EXTERN GLboolean(*UnmapBuffer)(GLenum target);
   EXTERN void(*GetBufferParameteriv)(GLenum target, GLenum pname, GLint* v);
   EXTERN void(*GetBufferPointerv)(GLenum target, GLenum pname, void** v);
+#endif
+#if XGL_ENABLE_TEXTURE_RECTANGLE
   /* ARB_texture_rectangle */
   EXTERN bool have_ARB_texture_rectangle;
+#endif
+#if XGL_ENABLE_SRGB
   /* EXT_texture_sRGB */
   EXTERN bool have_EXT_texture_sRGB;
   /* EXT_framebuffer_sRGB */
   EXTERN bool have_EXT_framebuffer_sRGB;
+#endif
+#if XGL_ENABLE_SHADERS
   /* ARB_shader_objects */
   EXTERN bool have_ARB_shader_objects;
   EXTERN void (*DeleteObject)(GLhandleARB obj);
@@ -165,6 +172,8 @@ namespace xgl {
   EXTERN void (*GetVertexAttribiv)(GLuint index, GLenum pname, GLint *params);
   EXTERN void (*GetVertexAttribPointerv)(GLuint index,
                                          GLenum pname, void **pointer);
+#endif
+#if XGL_ENABLE_FBO
   /* ARB_draw_buffers */
   EXTERN bool have_ARB_draw_buffers;
   EXTERN void (*DrawBuffers)(GLsizei n, const GLenum* bufs);
@@ -215,6 +224,7 @@ namespace xgl {
                                  GLint dstX0, GLint dstY0,
                                  GLint dstX1, GLint dstY1,
                                  GLbitfield mask, GLenum filter);
+#endif
 };
 
 #define REQUIRE_EXTENSION(ext) if(!xgl::have_##ext) die("Your video hardware does not support %s, and is therefore not supported.", #ext)
