@@ -6,4 +6,4 @@ TEG_OBJECTS:=obj/teg/config.o obj/teg/io.o obj/teg/miscutil.o obj/teg/video.o ob
 lib/libteg.a: $(TEG_OBJECTS)
 	@echo Archiving "$@"...
 	@$(AR) $(ARFLAGS) "$@" $^
-	@test -f obj/teg/config.debug.o && $(AR) $(ARFLAGS) $(patsubst %.a,%.debug.a,$@) $(patsubst %.o,%.debug.o,$^)
+	@if test -f obj/teg/config.debug.o; then $(AR) $(ARFLAGS) $(patsubst %.a,%.debug.a,$@) $(patsubst %.o,%.debug.o,$^); fi
