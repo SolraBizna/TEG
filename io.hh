@@ -8,14 +8,19 @@
 #include <errno.h>
 
 namespace IO {
+  /* Only use these two for tools! */
+  FILE* OpenRawPathForRead(const char* path);
+  FILE* OpenRawPathForWrite(const char* path);
+  /* Use this to read data files; FS virtualization may be in effect */
   FILE* OpenDataFileForRead(const char* format, ...)
   __attribute__((format(printf,1,2)));
-  FILE* OpenRawPathForRead(const char* path);
+  /* Use these to read/write configuration files
+     Sequence for writing a config file:
+     OpenConfigFileForWrite, (write stuff), fclose, UpdateConfigFile
+     If you don't UpdateConfigFile, the configuration file will not be saved */
   FILE* OpenConfigFileForRead(const char* filename);
   FILE* OpenConfigFileForWrite(const char* filename);
   void UpdateConfigFile(const char* filename);
-  // sequence for writing a config file:
-  // OpenConfigFileForWrite, (write stuff), fclose, UpdateConfigFile
 #if __WIN32__
   void DoRedirectOutput();
 #endif

@@ -299,6 +299,16 @@ FILE* IO::OpenRawPathForRead(const char* filename) {
   return ret;
 }
 
+FILE* IO::OpenRawPathForWrite(const char* filename) {
+  TCHAR* path = get_raw_path(filename);
+  FILE* ret = fopen(path, _T("wb"));
+  if(!ret) {
+    perror(path);
+  }
+  safe_free(path);
+  return ret;
+}
+
 enum path_type {
   NORMAL, BACKUP, EDIT
 };
