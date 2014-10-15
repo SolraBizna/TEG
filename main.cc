@@ -20,6 +20,8 @@ extern "C" int wmain(int argc, WCHAR* w_argv[]) {
     argv[n] = reinterpret_cast<char*>(safe_malloc(len));
     WideCharToMultiByte(CP_UTF8, 0, w_argv[n], -1, argv[n], len, NULL, NULL);
   }
+  g_argc = argc;
+  g_argv = argv;
   return teg_main(argc, argv);
 }
 
