@@ -1,5 +1,5 @@
 AR=ar
-ARFLAGS=-rscD
+ARFLAGS=-rsc
 
 TEG_OBJECTS:=obj/teg/config.o obj/teg/io.o obj/teg/miscutil.o obj/teg/video.o obj/teg/xgl.o obj/teg/main.o
 
