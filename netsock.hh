@@ -108,7 +108,7 @@ namespace Net {
       sock = other.sock;
       other.sock = INVALID_SOCKET;
     }
-    inline bool Valid() { return sock != INVALID_SOCKET; }
+    inline bool Valid() const { return sock != INVALID_SOCKET; }
     inline bool operator==(const Sock& other) const { return &other == this; }
     inline bool operator<(const Sock& other) const { return &other < this; }
     /* you should pretty much only use this for dealing with Connect */

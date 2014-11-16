@@ -318,7 +318,7 @@ IOResult SockDgram::Send(std::string& error_out,
       return IOResult::ERROR;
     }
   }
-  else if(result != len) {
+  else if((size_t)result != len) {
     error_out = std::string("Could not send: Message size too long (and it was"
                             " truncated illegally at the OS level)");
     return IOResult::ERROR;
@@ -365,6 +365,7 @@ bool ServerSock::SubBind(std::string& error_out, const char* bind_address,
     Close();
     return false;
   }
+  return true;
 }
 
 bool ServerSockStream::Bind(std::string& error_out, const char* bind_address,
@@ -380,7 +381,7 @@ bool ServerSockStream::Bind(std::string& error_out, const char* bind_address,
 
 bool ServerSockStream::Accept(SockStream& sock_out, Address& address_out) {
   unsigned address_len = sizeof(address_out);
-  SOCKET sock = accept(sock, &address_out.faceless, &address_len);
+  SOCKET sock = accept(this->sock, &address_out.faceless, &address_len);
   if(sock != INVALID_SOCKET) {
     sock_out.Become(sock);
     return true;
@@ -450,7 +451,7 @@ IOResult ServerSockDgram::Send(std::string& error_out,
       return IOResult::ERROR;
     }
   }
-  else if(result != len) {
+  else if((size_t)result != len) {
     error_out = std::string("Could not send to ") + address.ToLongString()
       + ": Message size too long (and it was truncated illegally at the OS"
       " level)";
@@ -550,4 +551,5 @@ bool Net::ResolveHost(std::string& error_out, std::forward_list<Address>& ret,
     }
   }
   freeaddrinfo(head);
+  return true;
 }
