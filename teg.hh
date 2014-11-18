@@ -10,9 +10,11 @@
 #include "teg.h"
 
 namespace TEG {
-  std::string format(const char* format, ...);
+  std::string format(const char* format, ...)
+    __attribute__((format(printf, 1, 2)));
   std::string format(const std::string& format, ...);
-  std::string vformat(const char* format, va_list arg);
+  std::string vformat(const char* format, va_list arg)
+    __attribute__((format(printf, 1, 0)));
   std::string vformat(const std::string& format, va_list arg);
 }
 
