@@ -8,6 +8,8 @@
 #include <string>
 
 #include "teg.h"
+#undef lerp
+template<class T, class S> T lerp(T a, T b, S i) { return a + (b-a) * i; }
 
 namespace TEG {
   std::string format(const char* format, ...)

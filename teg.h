@@ -97,6 +97,8 @@ void _assertgl(const char* file, int line, const char* name);
 
 #define elementcount(array) (sizeof(array) / sizeof(*(array)))
 
+#define lerp(a,b,i) ((a) + ((b)-(a)) * (i))
+
 #ifdef __cplusplus
 }
 #endif
