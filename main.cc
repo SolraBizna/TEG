@@ -1,4 +1,6 @@
+#define WE_ARE_IN_CHARGE_OF_POSTINIT_HANDLING 1
 #include "teg.hh"
+#include "postinit.hh"
 
 int g_argc;
 const char** g_argv;
@@ -22,6 +24,7 @@ extern "C" int wmain(int argc, WCHAR* w_argv[]) {
   }
   g_argc = argc;
   g_argv = argv;
+  TEG::DoPostInit();
   return teg_main(argc, argv);
 }
 
@@ -40,6 +43,7 @@ extern "C" int main(int argc, char* argv[]) {
   g_argv0 = argv[0];
   g_argc = argc;
   g_argv = const_cast<const char**>(argv);
+  TEG::DoPostInit();
   return teg_main(argc, argv);
 }
 #endif
