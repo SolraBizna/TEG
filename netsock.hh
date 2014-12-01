@@ -54,7 +54,7 @@ namespace Net {
     size_t Length() const;
   public:
     inline Address() : family(AF_UNSPEC) {}
-    Address(const struct sockaddr* src);
+    inline Address(const struct sockaddr* src) { *this = src; }
     Address& operator=(const struct sockaddr* src);
     bool operator==(const Address& other) const;
     bool operator<(const Address& other) const;
@@ -122,6 +122,7 @@ namespace Net {
   };
   class SockStream : public Sock {
   public:
+    /* TODO: shutdown */
     IOResult Connect(std::string& error_out, Address& target_address);
     IOResult Receive(std::string& error_out,
                      void* buf, size_t& len_inout);

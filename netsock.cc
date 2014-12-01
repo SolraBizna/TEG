@@ -34,7 +34,7 @@ Sock::Sock() : sock(INVALID_SOCKET) {}
 Sock::~Sock() { if(Valid()) Close(); }
 
 bool Sock::Init(std::string& error_out, int domain, int type) {
-  sock = socket(domain, type, 0);
+  int sock = socket(domain, type, 0);
   if(sock == INVALID_SOCKET) {
     error_out = std::string("Could not create socket: ") + error_string();
     return false;
@@ -86,6 +86,20 @@ void Sock::Close() {
   close(sock);
 #endif
   sock = INVALID_SOCKET;
+}
+
+Address& Address::operator=(const struct sockaddr* src) {
+  switch(src->sa_family) {
+  case AF_INET:
+    memcpy(&in, (const struct sockaddr_in*)src, sizeof(struct sockaddr_in));
+    break;
+  case AF_INET6:
+    memcpy(&in6, (const struct sockaddr_in6*)src, sizeof(struct sockaddr_in6));
+    break;
+  default:
+    family = AF_UNSPEC;
+  }
+  return *this;
 }
 
 size_t Address::Length() const {
@@ -215,6 +229,7 @@ IOResult SockStream::Receive(std::string& error_out,
       return IOResult::ERROR;
     }
   }
+  else if(result == 0) return IOResult::CONNECTION_CLOSED;
   else {
     len_inout = result;
     return IOResult::OKAY;
