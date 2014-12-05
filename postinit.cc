@@ -1,4 +1,3 @@
-#define WE_ARE_IN_CHARGE_OF_POSTINIT_HANDLING 1
 #include "postinit.hh"
 
 #include <forward_list>

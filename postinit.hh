@@ -21,12 +21,14 @@ namespace TEG {
   class PostInitHandler {
     PostInitHandler(int priority, std::function<void()> handler);
     PostInitHandler(std::function<void()> handler)
-      : PostInitHandler(0, handler);
+      : PostInitHandler(0, handler) {}
     /* We do not provide a destructor. We assume we will be used correctly. */
   };
-#if WE_ARE_IN_CHARGE_OF_POSTINIT_HANDLING
-  void DoPostInit();
+  void DoPostInit()
+#if !WE_ARE_IN_CHARGE_OF_POSTINIT_HANDLING
+    __attribute__((error("You should not be calling DoPostInit.")))
 #endif
+    ;
 }
 
 #endif
