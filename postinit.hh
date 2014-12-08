@@ -15,9 +15,10 @@ namespace TEG {
      and after TEG has done all TEG-specific initialization (e.g. command line
      handling), but before teg_main is called.
      Execution order: 0, 1, ..., max(priority), min(priority), ..., -2, -1
-     therefore, functions with priority -1 are executed last.
      Don't provide absurdly large or small priorities; they're handled with
-     arrays! */
+     arrays! Only use non-zero priorities to ensure that your InitHandler runs
+     before/after a specific other InitHandler (or InitHandlers) that it
+     depends on (or is depended on by) */
   class PostInitHandler {
     PostInitHandler(int priority, std::function<void()> handler);
     PostInitHandler(std::function<void()> handler)
