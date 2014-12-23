@@ -113,7 +113,7 @@ void Sock::Close() {
 }
 
 bool Sock::GetPeerName(Address& out) {
-  out.family = AF_UNSPEC;
+  out.faceless.sa_family = AF_UNSPEC;
   if(!Valid()) return false;
   unsigned int len = sizeof(out);
   int err = getpeername(sock, &out.faceless, &len);
@@ -129,13 +129,13 @@ Address& Address::operator=(const struct sockaddr* src) {
     memcpy(&in6, (const struct sockaddr_in6*)src, sizeof(struct sockaddr_in6));
     break;
   default:
-    family = AF_UNSPEC;
+    faceless.sa_family = AF_UNSPEC;
   }
   return *this;
 }
 
 size_t Address::Length() const {
-  switch(family) {
+  switch(faceless.sa_family) {
   case AF_INET: return sizeof(in);
   case AF_INET6: return sizeof(in6);
   default: return sizeof(storage);
@@ -143,8 +143,8 @@ size_t Address::Length() const {
 }
 
 bool Address::operator==(const Address& other) const {
-  if(other.family != family) return false;
-  switch(family) {
+  if(other.faceless.sa_family != faceless.sa_family) return false;
+  switch(faceless.sa_family) {
   case AF_INET:
     return other.in.sin_addr.s_addr == in.sin_addr.s_addr
       && other.in.sin_port == in.sin_port;
@@ -162,8 +162,8 @@ bool Address::operator<(const Address& other) const {
 #define PIVOT_COMPARE(wat) \
   if(wat < other.wat) return true; \
   else if(wat > other.wat) return false
-  PIVOT_COMPARE(family);
-  switch(family) {
+  PIVOT_COMPARE(faceless.sa_family);
+  switch(faceless.sa_family) {
   case AF_INET:
     PIVOT_COMPARE(in.sin_addr.s_addr);
     PIVOT_COMPARE(in.sin_port);
@@ -185,7 +185,7 @@ bool Address::operator<(const Address& other) const {
 }
 
 std::string Address::ToString() const {
-  switch(family) {
+  switch(faceless.sa_family) {
   case AF_INET:
     {
       char ip[INET_ADDRSTRLEN];
@@ -204,7 +204,7 @@ std::string Address::ToString() const {
 }
 
 std::string Address::ToLongString() const {
-  switch(family) {
+  switch(faceless.sa_family) {
   case AF_INET:
     {
       char ip[INET_ADDRSTRLEN];
@@ -224,7 +224,7 @@ std::string Address::ToLongString() const {
 
 IOResult SockStream::Connect(std::string& error_out, Address& target_address,
                              bool initially_blocking) {
-  if(!Init(error_out, target_address.family, SOCK_STREAM, initially_blocking))
+  if(!Init(error_out, target_address.faceless.sa_family, SOCK_STREAM, initially_blocking))
     return IOResult::ERROR;
   if(connect(sock, &target_address.faceless, target_address.Length())) {
     auto err = last_error;
@@ -316,7 +316,7 @@ void SockStream::ShutdownBoth() {
 }
  
 IOResult SockDgram::Connect(std::string& error_out, Address& target_address) {
-  if(!Init(error_out, target_address.family, SOCK_DGRAM))
+  if(!Init(error_out, target_address.faceless.sa_family, SOCK_DGRAM))
     return IOResult::ERROR;
   if(connect(sock, &target_address.faceless, target_address.Length())) {
     switch(last_error) {
@@ -397,7 +397,7 @@ bool ServerSock::SubBind(std::string& error_out, const char* bind_address,
   if(!Init(error_out, (int)v, type))
     return false;
   Address addr;
-  addr.family = (int)v;
+  addr.faceless.sa_family = (int)v;
   int e;
   if(bind_address) {
     switch(v) {

@@ -38,7 +38,6 @@ namespace Net {
   union Address {
   private:
     struct sockaddr faceless;
-    typeof(faceless.sa_family) family;
     struct sockaddr_in in;
     struct sockaddr_in6 in6;
     struct sockaddr_storage storage;
@@ -53,7 +52,7 @@ namespace Net {
                                  const char*, uint16_t, bool);
     size_t Length() const;
   public:
-    inline Address() : family(AF_UNSPEC) {}
+    inline Address() { faceless.sa_family = AF_UNSPEC; }
     inline Address(const struct sockaddr* src) { *this = src; }
     Address& operator=(const struct sockaddr* src);
     bool operator==(const Address& other) const;
@@ -61,7 +60,7 @@ namespace Net {
     std::string ToString() const;
     std::string ToLongString() const;
     inline size_t Hash() const {
-      switch(family) {
+      switch(faceless.sa_family) {
       case AF_INET6:
         {
           uint32_t* punned_addr_p = (uint32_t*)in6.sin6_addr.s6_addr;
@@ -78,14 +77,14 @@ namespace Net {
       }
     }
     inline int GetEstimatedDgramMTU() const {
-      switch(family) {
+      switch(faceless.sa_family) {
       case AF_INET6: return 1232; // 1280 - 48
       case AF_INET: return 548; // 576 - 28
       default: return 0;
       }
     }
     inline operator bool() const { return Valid(); }
-    inline bool Valid() const { return family == AF_INET6 || family == AF_INET; }
+    inline bool Valid() const { return faceless.sa_family == AF_INET6 || faceless.sa_family == AF_INET; }
   };
   enum class IOResult {
     /*

@@ -152,7 +152,9 @@ static const TCHAR* GetSelfPath() {
 # endif
 #endif
 #ifndef DISABLE_ARGV0_PATH_EXTRACTION
-    if(g_argv0) {
+    if(!g_argv0)
+      die("g_argv0 was not set!");
+    else if(g_argv0) {
       if(g_argv0[0] == *DIR_SEP) {
         /* Absolute path. */
         self_path = (TCHAR*)safe_malloc(sizeof(TCHAR) * (strlen(g_argv0)+1));
