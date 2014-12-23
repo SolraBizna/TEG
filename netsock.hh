@@ -77,6 +77,15 @@ namespace Net {
           (size_t)in.sin_port * 0x2D535737U;
       }
     }
+    inline int GetEstimatedDgramMTU() const {
+      switch(family) {
+      case AF_INET6: return 1232; // 1280 - 48
+      case AF_INET: return 548; // 576 - 28
+      default: return 0;
+      }
+    }
+    inline operator bool() const { return Valid(); }
+    inline bool Valid() const { return family == AF_INET6 || family == AF_INET; }
   };
   enum class IOResult {
     /*
@@ -86,11 +95,14 @@ namespace Net {
         retrieve an explanatory error message.
       OKAY: IO succeeded. (A zero return here means an empty, valid IO actually
         occurred.)
-      CONNECTION_CLOSED: The connection was closed at the far end. (Or outright
-        refused, in some cases.)
+      CONNECTION_CLOSED: The connection was closed at the far end. When
+        connecting, signifies that the connection was refused.
       ERROR: A bad error occurred and the socket should be killed.
+      MSGSIZE: Message was too large. If possible, sending should be repeated
+        with a smaller datagram size. (Dgram sockets only; code that doesn't
+        care may handle the same way as ERROR)
     */
-    WOULD_BLOCK, OKAY, CONNECTION_CLOSED, ERROR
+    WOULD_BLOCK, OKAY, CONNECTION_CLOSED, ERROR, MSGSIZE
   };
   class Sock {
   protected:
@@ -100,14 +112,16 @@ namespace Net {
     Sock();
     ~Sock();
     Sock(const Sock&) = delete;
-    bool Init(std::string& error_out, int domain, int type);
-    void Become(SOCKET sock);
+    bool Init(std::string& error_out, int domain, int type,
+              bool blocking = false);
+    void Become(SOCKET sock, bool blocking = false);
   public:
     inline Sock(Sock&& other) {
       if(&other == this) return;
       sock = other.sock;
       other.sock = INVALID_SOCKET;
     }
+    inline operator bool() const { return Valid(); }
     inline bool Valid() const { return sock != INVALID_SOCKET; }
     inline bool operator==(const Sock& other) const { return &other == this; }
     inline bool operator<(const Sock& other) const { return &other < this; }
@@ -119,15 +133,29 @@ namespace Net {
       assert(Valid());
       return (size_t)sock * 0x97E6461BU;
     }
+    /* returns false on invalid/unconnected sockets, true on success */
+    bool GetPeerName(Address& out);
+    /* non-blocking IO is default
+       blocking status is a property of the underlying OS socket and not of the
+       Sock instance */
+    void SetBlocking(bool);
   };
   class SockStream : public Sock {
   public:
-    /* TODO: shutdown */
-    IOResult Connect(std::string& error_out, Address& target_address);
+    /* TODO: shutdown (maybe) */
+    IOResult Connect(std::string& error_out, Address& target_address,
+                     bool initially_blocking = false);
     IOResult Receive(std::string& error_out,
                      void* buf, size_t& len_inout);
     IOResult Send(std::string& error_out,
                   const void* buf, size_t& len_inout);
+    /* Close one end of the socket. */
+    void ShutdownSend();
+    void ShutdownReceive();
+    /* Close both ends of the socket but don't close it? This is needed,
+       apparently, thanks to a bug in the Linux kernel that will never be
+       fixed. */
+    void ShutdownBoth();
   };
   class SockDgram : public Sock {
   public:
