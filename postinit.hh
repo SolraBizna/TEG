@@ -19,7 +19,7 @@ namespace TEG {
      arrays! Only use non-zero priorities to ensure that your InitHandler runs
      before/after a specific other InitHandler (or InitHandlers) that it
      depends on (or is depended on by) */
-  class PostInitHandler {
+  struct PostInitHandler {
     PostInitHandler(int priority, std::function<void()> handler);
     PostInitHandler(std::function<void()> handler)
       : PostInitHandler(0, handler) {}
