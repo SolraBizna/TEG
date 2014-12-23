@@ -58,6 +58,13 @@ bool Sock::Init(std::string& error_out, int domain, int type, bool blocking) {
     error_out = std::string("Could not create socket: ") + error_string();
     return false;
   }
+#ifdef IPV6_V6ONLY
+  /* DISABLE dual-stack */
+  if(domain == AF_INET6) {
+    int one = 1;
+    setsockopt(sock, IPPROTO_IPV6, IPV6_V6ONLY, &one, sizeof(one));
+  }
+#endif
   Become(sock, blocking);
   return true;
 }
