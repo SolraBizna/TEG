@@ -40,6 +40,13 @@ extern "C" int main(int argc, char* argv[]) {
 }
 #else
 extern "C" int main(int argc, char* argv[]) {
+#if MACOSX
+  if(argc == 2 && strlen(argv[1]) > 5 && !memcmp(argv[1], "-psn_", 5)) {
+    /* Launched from Finder. Eat that argument. */
+    argv[1] = NULL;
+    argc = 1;
+  }
+#endif
   g_argv0 = argv[0];
   g_argc = argc;
   g_argv = const_cast<const char**>(argv);
