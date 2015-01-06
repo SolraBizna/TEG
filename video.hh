@@ -21,6 +21,12 @@ namespace Video {
   uint32_t GetScreenHeight();
   double GetAspect(); // return aspect ratio of screen
   void Swap(); // swap buffers
+  /* Returns false if the screen is not currently being displayed to the user.
+     Rendering isn't worthwhile unless this returns true. */
+  bool IsScreenActive();
+  /* Returns true if the event was fully handled. Returns false if the event
+     (possibly modified) should be handled by the caller. */
+  bool HandleEvent(SDL_Event& evt);
 };
 
 #ifndef TEG_PIXEL_PACK
