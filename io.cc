@@ -312,22 +312,20 @@ static TCHAR* get_raw_path(const char* in_path) {
   return path;
 }
 
-FILE* IO::OpenRawPathForRead(const char* filename) {
+FILE* IO::OpenRawPathForRead(const char* filename, bool log_error) {
   TCHAR* path = get_raw_path(filename);
   FILE* ret = fopen(path, _T("rb"));
-  if(!ret) {
+  if(!ret && log_error)
     perror(path);
-  }
   safe_free(path);
   return ret;
 }
 
-FILE* IO::OpenRawPathForWrite(const char* filename) {
+FILE* IO::OpenRawPathForWrite(const char* filename, bool log_error) {
   TCHAR* path = get_raw_path(filename);
   FILE* ret = fopen(path, _T("wb"));
-  if(!ret) {
+  if(!ret && log_error)
     perror(path);
-  }
   safe_free(path);
   return ret;
 }
