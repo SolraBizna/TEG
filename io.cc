@@ -70,7 +70,7 @@ typedef char TCHAR; //I love Windows!
 # define CONFIG_BASE_DIR "My Documents\\My Games\\" GAME_PRETTY_NAME
 #else
 # define CONFIG_BASE_ENV "HOME"
-# ifdef __MACOSX__
+# ifdef MACOSX
 #  define CONFIG_BASE_ENV_DEFAULT "/Users/Shared"
 #  define CONFIG_BASE_DIR "Library/Preferences/" GAME_PRETTY_NAME
 # else
@@ -83,6 +83,20 @@ typedef char TCHAR; //I love Windows!
 #define DATA_BASE_DIR "Data"
 
 extern "C" const TCHAR* g_argv0;
+
+#if MACOSX
+static TCHAR* ExecutablePathToContentsPath(TCHAR* in_path) {
+  if(in_path && strlen(in_path) >= 6) {
+    if(!strcmp(in_path + strlen(in_path) - strlen("/MacOS"), "/MacOS")) {
+      in_path[strlen(in_path) - strlen("/MacOS")] = 0;
+      in_path = (TCHAR*)safe_realloc(in_path, strlen(in_path));
+    }
+  }
+  return in_path;
+}
+#else
+#define ExecutablePathToContentsPath(x) x
+#endif
 
 static const TCHAR* GetSelfPath() {
   static TCHAR* self_path = NULL;
@@ -99,6 +113,7 @@ static const TCHAR* GetSelfPath() {
 	  if(p) {
 	    *p = 0;
       self_path = (TCHAR*)safe_realloc(self_path, sizeof(TCHAR) * (strlen(self_path)+1));
+      self_path = ExecutablePathToContentsPath(self_path);
       return self_path;
     }
 	}
@@ -127,6 +142,9 @@ static const TCHAR* GetSelfPath() {
 	*/
 #else
     /* UNIX-like */
+#if MACOSX
+#define DISABLE_PROC_SELF_EXE 1
+#endif
 # ifndef DISABLE_PROC_SELF_EXE
     /* first, try /proc/self/exe */
 #  define PROC_SELF_EXE DIR_SEP "proc" DIR_SEP "self" DIR_SEP "exe"
@@ -141,6 +159,7 @@ static const TCHAR* GetSelfPath() {
         *p = 0;
         if(*self_path == 0) strcpy(self_path, DIR_SEP);
         self_path = (TCHAR*)safe_realloc(self_path, strlen(self_path)+1);
+	self_path = ExecutablePathToContentsPath(self_path);
         return self_path;
       }
     }
@@ -152,7 +171,9 @@ static const TCHAR* GetSelfPath() {
 # endif
 #endif
 #ifndef DISABLE_ARGV0_PATH_EXTRACTION
-    if(g_argv0) {
+    if(!g_argv0)
+      die("g_argv0 was not set!");
+    else if(g_argv0) {
       if(g_argv0[0] == *DIR_SEP) {
         /* Absolute path. */
         self_path = (TCHAR*)safe_malloc(sizeof(TCHAR) * (strlen(g_argv0)+1));
@@ -162,7 +183,8 @@ static const TCHAR* GetSelfPath() {
           *p = 0;
           if(*self_path == 0) strcpy(self_path, _T("/"));
           self_path = (TCHAR*)safe_realloc(self_path, strlen(self_path)+1);
-          return self_path;
+	  self_path = ExecutablePathToContentsPath(self_path);
+	  return self_path;
         }
       }
       else if(strchr(g_argv0, *DIR_SEP)) {
@@ -183,7 +205,8 @@ static const TCHAR* GetSelfPath() {
           *p = 0;
           if(*self_path == 0) strcpy(self_path, _T("/"));
           self_path = (TCHAR*)safe_realloc(self_path, strlen(self_path)+1);
-          return self_path;
+	  self_path = ExecutablePathToContentsPath(self_path);
+	  return self_path;
         }
       }
       else {
@@ -289,22 +312,20 @@ static TCHAR* get_raw_path(const char* in_path) {
   return path;
 }
 
-FILE* IO::OpenRawPathForRead(const char* filename) {
+FILE* IO::OpenRawPathForRead(const char* filename, bool log_error) {
   TCHAR* path = get_raw_path(filename);
   FILE* ret = fopen(path, _T("rb"));
-  if(!ret) {
+  if(!ret && log_error)
     perror(path);
-  }
   safe_free(path);
   return ret;
 }
 
-FILE* IO::OpenRawPathForWrite(const char* filename) {
+FILE* IO::OpenRawPathForWrite(const char* filename, bool log_error) {
   TCHAR* path = get_raw_path(filename);
   FILE* ret = fopen(path, _T("wb"));
-  if(!ret) {
+  if(!ret && log_error)
     perror(path);
-  }
   safe_free(path);
   return ret;
 }

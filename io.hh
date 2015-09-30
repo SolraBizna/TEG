@@ -9,9 +9,11 @@
 
 namespace IO {
   /* Only use these two for tools! */
-  FILE* OpenRawPathForRead(const char* path);
-  FILE* OpenRawPathForWrite(const char* path);
-  /* Use this to read data files; FS virtualization may be in effect */
+  FILE* OpenRawPathForRead(const char* path, bool log_error = true);
+  FILE* OpenRawPathForWrite(const char* path, bool log_error = true);
+  /* Use this to read data files; FS virtualization may be in effect
+     Always prints an error on failure
+     TODO: unprintfize this */
   FILE* OpenDataFileForRead(const char* format, ...)
   __attribute__((format(printf,1,2)));
   /* Use these to read/write configuration files

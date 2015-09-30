@@ -3,6 +3,7 @@
 #if !__WIN32__
 #include <arpa/inet.h>
 #include <netdb.h>
+#include <signal.h>
 #endif
 
 using namespace Net;
@@ -30,36 +31,66 @@ static const char* error_string(int err = last_error) {
 #endif
 }
 
+static bool have_inited_sockets = false;
+#ifdef __WIN32__
+static WSADATA wsaData;
+#endif
+
+static void init_sockets() {
+  have_inited_sockets = true;
+#ifdef __WIN32__
+  int fail;
+  if((fail = WSAStartup(MAKEWORD(1,1),&wsaData)))
+    die("WSAStartup failed with error code %i", fail);
+  dprintf("WinSock version %i.%i in use (%i.%i max)\nDescription: %s\nStatus: %s\n", wsaData.wVersion & 255, wsaData.wVersion >> 8, wsaData.wHighVersion & 255, wsaData.wHighVersion >> 8, wsaData.szDescription, wsaData.szSystemStatus);
+#else
+  signal(SIGPIPE, SIG_IGN);
+#endif
+}
+
 Sock::Sock() : sock(INVALID_SOCKET) {}
 Sock::~Sock() { if(Valid()) Close(); }
 
-bool Sock::Init(std::string& error_out, int domain, int type) {
-  sock = socket(domain, type, 0);
+bool Sock::Init(std::string& error_out, int domain, int type, bool blocking) {
+  if(!have_inited_sockets) init_sockets();
+  int sock = socket(domain, type, 0);
   if(sock == INVALID_SOCKET) {
     error_out = std::string("Could not create socket: ") + error_string();
     return false;
   }
-  Become(sock);
+#ifdef IPV6_V6ONLY
+  /* DISABLE dual-stack */
+  if(domain == AF_INET6) {
+    int one = 1;
+    setsockopt(sock, IPPROTO_IPV6, IPV6_V6ONLY, &one, sizeof(one));
+  }
+#endif
+  Become(sock, blocking);
   return true;
 }
 
-void Sock::Become(SOCKET sock) {
+void Sock::Become(SOCKET sock, bool blocking) {
+  if(!have_inited_sockets) init_sockets();
 #if !__WIN32__
   if(sock >= FD_SETSIZE)
     die("Too many sockets! (Local FD_SETSIZE=%i)", FD_SETSIZE);
   /* WinSock fd_set is an array-list, not a bitset. Don't bother checking; TEG
      games aren't going to be developed on Windows first, after all. */
 #endif
-  assert(!Valid());
+  if(Valid()) Close();
   this->sock = sock;
+  SetBlocking(blocking);
+}
+
+void Sock::SetBlocking(bool blocking) {
 #if __WIN32__
-  u_long nonblocking = 1;
+  u_long nonblocking = !blocking;
   if(ioctlsocket(sock, FIONBIO, &nonblocking) < 0)
 #else
-  if(fcntl(sock, F_SETFL, O_NONBLOCK) < 0)
+  if(fcntl(sock, F_SETFL, blocking ? 0 : O_NONBLOCK) < 0)
 #endif
   {
-    fprintf(stderr, "WARNING: Could not make non-blocking socket! IT WILL BLOCK! (Reason given for failure: %s)\n", error_string());
+    fprintf(stderr, "WARNING: Could not set blocking status of socket! (Reason given for failure: %s)\n", error_string());
   }
 }
 
@@ -88,8 +119,30 @@ void Sock::Close() {
   sock = INVALID_SOCKET;
 }
 
+bool Sock::GetPeerName(Address& out) {
+  out.faceless.sa_family = AF_UNSPEC;
+  if(!Valid()) return false;
+  unsigned int len = sizeof(out);
+  int err = getpeername(sock, &out.faceless, &len);
+  return err == 0;
+}
+
+Address& Address::operator=(const struct sockaddr* src) {
+  switch(src->sa_family) {
+  case AF_INET:
+    memcpy(&in, (const struct sockaddr_in*)src, sizeof(struct sockaddr_in));
+    break;
+  case AF_INET6:
+    memcpy(&in6, (const struct sockaddr_in6*)src, sizeof(struct sockaddr_in6));
+    break;
+  default:
+    faceless.sa_family = AF_UNSPEC;
+  }
+  return *this;
+}
+
 size_t Address::Length() const {
-  switch(family) {
+  switch(faceless.sa_family) {
   case AF_INET: return sizeof(in);
   case AF_INET6: return sizeof(in6);
   default: return sizeof(storage);
@@ -97,8 +150,8 @@ size_t Address::Length() const {
 }
 
 bool Address::operator==(const Address& other) const {
-  if(other.family != family) return false;
-  switch(family) {
+  if(other.faceless.sa_family != faceless.sa_family) return false;
+  switch(faceless.sa_family) {
   case AF_INET:
     return other.in.sin_addr.s_addr == in.sin_addr.s_addr
       && other.in.sin_port == in.sin_port;
@@ -116,8 +169,8 @@ bool Address::operator<(const Address& other) const {
 #define PIVOT_COMPARE(wat) \
   if(wat < other.wat) return true; \
   else if(wat > other.wat) return false
-  PIVOT_COMPARE(family);
-  switch(family) {
+  PIVOT_COMPARE(faceless.sa_family);
+  switch(faceless.sa_family) {
   case AF_INET:
     PIVOT_COMPARE(in.sin_addr.s_addr);
     PIVOT_COMPARE(in.sin_port);
@@ -139,7 +192,7 @@ bool Address::operator<(const Address& other) const {
 }
 
 std::string Address::ToString() const {
-  switch(family) {
+  switch(faceless.sa_family) {
   case AF_INET:
     {
       char ip[INET_ADDRSTRLEN];
@@ -158,7 +211,7 @@ std::string Address::ToString() const {
 }
 
 std::string Address::ToLongString() const {
-  switch(family) {
+  switch(faceless.sa_family) {
   case AF_INET:
     {
       char ip[INET_ADDRSTRLEN];
@@ -176,17 +229,19 @@ std::string Address::ToLongString() const {
   }
 }
 
-IOResult SockStream::Connect(std::string& error_out, Address& target_address) {
-  if(!Init(error_out, target_address.family, SOCK_STREAM))
+IOResult SockStream::Connect(std::string& error_out, Address& target_address,
+                             bool initially_blocking) {
+  if(!Init(error_out, target_address.faceless.sa_family, SOCK_STREAM, initially_blocking))
     return IOResult::ERROR;
   if(connect(sock, &target_address.faceless, target_address.Length())) {
-    switch(last_error) {
+    auto err = last_error;
+    Close();
+    switch(err) {
     case EINPROGRESS: return IOResult::WOULD_BLOCK;
-    case ECONNREFUSED: return IOResult::CONNECTION_CLOSED;
     default:
       error_out = std::string("Could not connect to ")
-        + target_address.ToLongString() + ": " + error_string();
-      return IOResult::ERROR;
+        + target_address.ToLongString() + ": " + error_string(err);
+      return err == ECONNREFUSED ? IOResult::CONNECTION_CLOSED : IOResult::ERROR;
     }
   }
   return IOResult::OKAY;
@@ -208,12 +263,15 @@ IOResult SockStream::Receive(std::string& error_out,
     case EWOULDBLOCK:
 #endif
       return IOResult::WOULD_BLOCK;
-    case ECONNREFUSED:
-      return IOResult::CONNECTION_CLOSED;
     default:
-      error_out = std::string("Could not receive: ") + error_string();
-      return IOResult::ERROR;
+      auto err = last_error;
+      error_out = std::string("Could not receive: ") + error_string(err);
+      return err == ECONNREFUSED ? IOResult::CONNECTION_CLOSED : IOResult::ERROR;
     }
+  }
+  else if(result == 0) {
+    error_out = std::string("Could not receive: Connection closed");
+    return IOResult::CONNECTION_CLOSED;
   }
   else {
     len_inout = result;
@@ -237,11 +295,10 @@ IOResult SockStream::Send(std::string& error_out,
     case EWOULDBLOCK:
 #endif
       return IOResult::WOULD_BLOCK;
-    case ECONNREFUSED:
-      return IOResult::CONNECTION_CLOSED;
     default:
-      error_out = std::string("Could not send: ") + error_string();
-      return IOResult::ERROR;
+      auto err = last_error;
+      error_out = std::string("Could not send: ") + error_string(err);
+      return (err == ECONNREFUSED || err == EPIPE) ? IOResult::CONNECTION_CLOSED : IOResult::ERROR;
     }
   }
   else {
@@ -249,18 +306,33 @@ IOResult SockStream::Send(std::string& error_out,
     return IOResult::OKAY;
   }
 }
+
+void SockStream::ShutdownSend() {
+  if(!Valid()) return;
+  shutdown(sock, SHUT_WR);
+}
+ 
+void SockStream::ShutdownReceive() {
+  if(!Valid()) return;
+  shutdown(sock, SHUT_RD);
+}
+ 
+void SockStream::ShutdownBoth() {
+  if(!Valid()) return;
+  shutdown(sock, SHUT_RDWR);
+}
  
 IOResult SockDgram::Connect(std::string& error_out, Address& target_address) {
-  if(!Init(error_out, target_address.family, SOCK_DGRAM))
+  if(!Init(error_out, target_address.faceless.sa_family, SOCK_DGRAM))
     return IOResult::ERROR;
   if(connect(sock, &target_address.faceless, target_address.Length())) {
     switch(last_error) {
     case EINPROGRESS: return IOResult::WOULD_BLOCK;
-    case ECONNREFUSED: return IOResult::CONNECTION_CLOSED;
     default:
+      auto err = last_error;
       error_out = std::string("Could not connect to ")
-        + target_address.ToLongString() + ": " + error_string();
-      return IOResult::ERROR;
+        + target_address.ToLongString() + ": " + error_string(err);
+      return err == ECONNREFUSED ? IOResult::CONNECTION_CLOSED : IOResult::ERROR;
     }
   }
   return IOResult::OKAY;
@@ -282,11 +354,10 @@ IOResult SockDgram::Receive(std::string& error_out,
     case EWOULDBLOCK:
 #endif
       return IOResult::WOULD_BLOCK;
-    case ECONNREFUSED:
-      return IOResult::CONNECTION_CLOSED;
     default:
-      error_out = std::string("Could not receive: ") + error_string();
-      return IOResult::ERROR;
+      auto err = last_error;
+      error_out = std::string("Could not receive: ") + error_string(err);
+      return err == ECONNREFUSED ? IOResult::CONNECTION_CLOSED : IOResult::ERROR;
     }
   }
   else {
@@ -311,14 +382,15 @@ IOResult SockDgram::Send(std::string& error_out,
     case EWOULDBLOCK:
 #endif
       return IOResult::WOULD_BLOCK;
-    case ECONNREFUSED:
-      return IOResult::CONNECTION_CLOSED;
+    case EMSGSIZE:
+      return IOResult::MSGSIZE;
     default:
-      error_out = std::string("Could not send: ") + error_string();
-      return IOResult::ERROR;
+      auto err = last_error;
+      error_out = std::string("Could not send: ") + error_string(err);
+      return (err == ECONNREFUSED || err == EPIPE) ? IOResult::CONNECTION_CLOSED : IOResult::ERROR;
     }
   }
-  else if(result != len) {
+  else if((size_t)result != len) {
     error_out = std::string("Could not send: Message size too long (and it was"
                             " truncated illegally at the OS level)");
     return IOResult::ERROR;
@@ -332,7 +404,7 @@ bool ServerSock::SubBind(std::string& error_out, const char* bind_address,
   if(!Init(error_out, (int)v, type))
     return false;
   Address addr;
-  addr.family = (int)v;
+  addr.faceless.sa_family = (int)v;
   int e;
   if(bind_address) {
     switch(v) {
@@ -365,6 +437,7 @@ bool ServerSock::SubBind(std::string& error_out, const char* bind_address,
     Close();
     return false;
   }
+  return true;
 }
 
 bool ServerSockStream::Bind(std::string& error_out, const char* bind_address,
@@ -380,7 +453,7 @@ bool ServerSockStream::Bind(std::string& error_out, const char* bind_address,
 
 bool ServerSockStream::Accept(SockStream& sock_out, Address& address_out) {
   unsigned address_len = sizeof(address_out);
-  SOCKET sock = accept(sock, &address_out.faceless, &address_len);
+  SOCKET sock = accept(this->sock, &address_out.faceless, &address_len);
   if(sock != INVALID_SOCKET) {
     sock_out.Become(sock);
     return true;
@@ -442,15 +515,16 @@ IOResult ServerSockDgram::Send(std::string& error_out,
     case EWOULDBLOCK:
 #endif
       return IOResult::WOULD_BLOCK;
-    case ECONNREFUSED:
-      return IOResult::CONNECTION_CLOSED;
+    case EMSGSIZE:
+      return IOResult::MSGSIZE;
     default:
+      auto err = last_error;
       error_out = std::string("Could not send to ") + address.ToLongString()
-        + ": " + error_string();
-      return IOResult::ERROR;
+        + ": " + error_string(err);
+      return (err == ECONNREFUSED || err == EPIPE) ? IOResult::CONNECTION_CLOSED : IOResult::ERROR;
     }
   }
-  else if(result != len) {
+  else if((size_t)result != len) {
     error_out = std::string("Could not send to ") + address.ToLongString()
       + ": Message size too long (and it was truncated illegally at the OS"
       " level)";
@@ -526,11 +600,12 @@ bool Net::ResolveHost(std::string& error_out, std::forward_list<Address>& ret,
   hints.ai_flags = AI_V4MAPPED | AI_ADDRCONFIG;
   int status = getaddrinfo(host, NULL, &hints, &head);
   if(status != 0) {
-    error_out = std::string("Could not resolve host: ") + gai_strerror(status);
+    error_out = TEG::format("Could not resolve %s: %s",
+                            host, gai_strerror(status));
     return false;
   }
   else if(head == NULL) {
-    error_out = "Could not resolve host: NULL response from getaddrinfo";
+    error_out = TEG::format("Could not resolve %s: NULL response from getaddrinfo", host);
     return false;
   }
   auto it = ret.before_begin();
@@ -550,4 +625,5 @@ bool Net::ResolveHost(std::string& error_out, std::forward_list<Address>& ret,
     }
   }
   freeaddrinfo(head);
+  return true;
 }

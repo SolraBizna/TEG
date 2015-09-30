@@ -35,6 +35,7 @@ static const Config::Element video_config_elements[] = {
 static SDL_Window* window = NULL;
 static SDL_GLContext glcontext = NULL;
 static bool inited = false;
+static bool window_visible = true, window_minimized = false;
 
 void Video::Kill() {
   if(inited) {
@@ -83,6 +84,7 @@ void Video::Init() {
     else
       die("Could not create a window no matter how hard we tried. The last reason SDL gave was: %s", SDL_GetError());
   } while(1);
+  /* TODO: set minimized/visible state? */
   dprintf("SDL_CreateWindow(..., %i, %i, 0x%x) succeeded.\n",
           target_w, target_h, flags);
   glcontext = SDL_GL_CreateContext(window);
@@ -125,4 +127,30 @@ double Video::GetAspect() {
 
 void Video::Swap() {
   SDL_GL_SwapWindow(window);
+}
+
+bool Video::IsScreenActive() {
+  return window_visible && !window_minimized;
+}
+
+bool Video::HandleEvent(SDL_Event& evt) {
+  switch(evt.type) {
+  case SDL_WINDOWEVENT:
+    switch(evt.window.event) {
+    case SDL_WINDOWEVENT_SHOWN:
+      window_visible = true;
+      break;
+    case SDL_WINDOWEVENT_HIDDEN:
+      window_visible = false;
+      break;
+    case SDL_WINDOWEVENT_MINIMIZED:
+      window_minimized = true;
+      break;
+    case SDL_WINDOWEVENT_RESTORED:
+      window_minimized = false;
+      break;
+    }
+    return true;
+  }
+  return false;
 }
