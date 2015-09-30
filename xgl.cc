@@ -263,7 +263,8 @@ static const struct quirk_element {
   bool(*should_check_quirk)();
   bool(*check_quirk)();
 } quirks[] = {
-  {xgl::have_quirk_ARB_texture_rgb16_no_filtering,
+#if XGL_CHECK_RGB16_QUIRK
+  {xgl::have_quirk_texture_rgb16_no_filtering,
    "whether RGB16 textures do not support GL_LINEAR filtering",
    []() {
       return true;
@@ -309,6 +310,7 @@ static const struct quirk_element {
      glDeleteTextures(1, &test_tex);
      return test_pix[0] > 58900 || test_pix[0] < 6550;
    }},
+#endif
 #if XGL_ENABLE_RECTANGLE_TEXTURES
   {xgl::have_quirk_ARB_texture_rectangle_no_filtering,
    "whether rectangle textures do not support GL_LINEAR filtering",

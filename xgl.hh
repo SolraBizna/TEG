@@ -40,7 +40,9 @@ namespace xgl {
   EXTERN bool have_quirk_ARB_texture_float_half_no_filtering;
   EXTERN bool have_quirk_ARB_texture_float_single_no_filtering;
 #endif
-  EXTERN bool have_quirk_ARB_texture_rgb16_no_filtering;
+#if XGL_CHECK_RGB16_QUIRK
+  EXTERN bool have_quirk_texture_rgb16_no_filtering;
+#endif
 #if XGL_ENABLE_SRGB
   /* EXT_texture_sRGB */
   EXTERN bool have_EXT_texture_sRGB;
