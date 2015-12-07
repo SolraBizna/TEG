@@ -63,6 +63,7 @@ extern char* teg_strdup(const char* src) {
   return ret;
 }
 
+#ifndef TEG_NO_DIE_IMPLEMENTATION
 extern void die(const char* format, ...) {
   char error[1920]; // enough to fill up an 80x24 terminal
   va_list arg;
@@ -82,6 +83,7 @@ extern void die(const char* format, ...) {
   }
   exit(1);
 }
+#endif
 
 std::string TEG::format(const char* format, ...) {
   va_list arg;

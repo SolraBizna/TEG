@@ -23,6 +23,12 @@ namespace IO {
   FILE* OpenConfigFileForRead(const char* filename);
   FILE* OpenConfigFileForWrite(const char* filename);
   void UpdateConfigFile(const char* filename);
+  /* Use this for, say, an sqlite config database
+     Returns a UTF-8 absolute path to a config file with the given name. You
+     should free this pointer when you're done with it. */
+  const char* GetConfigFilePath(const char* filename);
+  /* Use this, say, if SQLITE_CANTOPEN is returned for a database */
+  void TryCreateConfigDirectory();
 #if __WIN32__
   void DoRedirectOutput();
 #endif

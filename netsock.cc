@@ -191,6 +191,20 @@ bool Address::operator<(const Address& other) const {
 #undef PIVOT_COMPARE
 }
 
+bool Address::IsLoopback() const {
+  static uint8_t v6_localhost_bytes[16] = {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1};
+  static uint8_t v6_mapped_localhost_bytes[13]={0,0,0,0,0,0,0,0,0,0,255,255,127};
+  switch(faceless.sa_family) {
+  case AF_INET6:
+    return !memcmp(in6.sin6_addr.s6_addr, v6_localhost_bytes, 16)
+      || !memcmp(in6.sin6_addr.s6_addr, v6_mapped_localhost_bytes, 13);
+  case AF_INET:
+    return (ntohl(in.sin_addr.s_addr) & 0xFF000000) == 0x7F000000;
+  default:
+    return false;
+  }
+}
+
 std::string Address::ToString() const {
   switch(faceless.sa_family) {
   case AF_INET:
@@ -229,16 +243,17 @@ std::string Address::ToLongString() const {
   }
 }
 
-IOResult SockStream::Connect(std::string& error_out, Address& target_address,
+IOResult SockStream::Connect(std::string& error_out,
+                             const Address& target_address,
                              bool initially_blocking) {
   if(!Init(error_out, target_address.faceless.sa_family, SOCK_STREAM, initially_blocking))
     return IOResult::ERROR;
   if(connect(sock, &target_address.faceless, target_address.Length())) {
     auto err = last_error;
-    Close();
     switch(err) {
     case EINPROGRESS: return IOResult::WOULD_BLOCK;
     default:
+      Close();
       error_out = std::string("Could not connect to ")
         + target_address.ToLongString() + ": " + error_string(err);
       return err == ECONNREFUSED ? IOResult::CONNECTION_CLOSED : IOResult::ERROR;
@@ -322,7 +337,8 @@ void SockStream::ShutdownBoth() {
   shutdown(sock, SHUT_RDWR);
 }
  
-IOResult SockDgram::Connect(std::string& error_out, Address& target_address) {
+IOResult SockDgram::Connect(std::string& error_out,
+                            const Address& target_address) {
   if(!Init(error_out, target_address.faceless.sa_family, SOCK_DGRAM))
     return IOResult::ERROR;
   if(connect(sock, &target_address.faceless, target_address.Length())) {
@@ -547,7 +563,7 @@ Select::Select(const std::forward_list<ServerSockStream*>* read_ss,
   FD_ZERO(&readfds);
   FD_ZERO(&writefds);
 #define SOCK_INTO_SET(socklist, set) \
-  if(socklist) for(auto sock : *socklist) { FD_SET(sock->sock, &set); if(sock->sock + 1 > nfds) nfds = sock->sock + 1; }
+  if(socklist) for(auto sock : *socklist) { assert(sock->Valid()); FD_SET(sock->sock, &set); if(sock->sock + 1 > nfds) nfds = sock->sock + 1; }
   SOCK_INTO_SET(read_ss, readfds);
   SOCK_INTO_SET(read_sd, readfds);
   SOCK_INTO_SET(write_sd, writefds);

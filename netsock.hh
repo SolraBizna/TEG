@@ -57,6 +57,11 @@ namespace Net {
     Address& operator=(const struct sockaddr* src);
     bool operator==(const Address& other) const;
     bool operator<(const Address& other) const;
+    /* returns true for addresses matching:
+       IPv4: 127.0.0.0/8
+       IPv6: ::1
+       IPv6: ::ffff:127.0.0.0/8 */
+    bool IsLoopback() const;
     std::string ToString() const;
     std::string ToLongString() const;
     inline size_t Hash() const {
@@ -110,6 +115,7 @@ namespace Net {
     SOCKET sock;
     Sock();
     ~Sock();
+    Sock& operator=(const Sock&) = delete;
     Sock(const Sock&) = delete;
     bool Init(std::string& error_out, int domain, int type,
               bool blocking = false);
@@ -119,6 +125,13 @@ namespace Net {
       if(&other == this) return;
       sock = other.sock;
       other.sock = INVALID_SOCKET;
+    }
+    inline Sock& operator=(Sock&& other) {
+      if(&other == this) return *this;
+      Close();
+      sock = other.sock;
+      other.sock = INVALID_SOCKET;
+      return *this;
     }
     inline operator bool() const { return Valid(); }
     inline bool Valid() const { return sock != INVALID_SOCKET; }
@@ -142,7 +155,7 @@ namespace Net {
   class SockStream : public Sock {
   public:
     /* TODO: shutdown (maybe) */
-    IOResult Connect(std::string& error_out, Address& target_address,
+    IOResult Connect(std::string& error_out, const Address& target_address,
                      bool initially_blocking = false);
     IOResult Receive(std::string& error_out,
                      void* buf, size_t& len_inout);
@@ -158,7 +171,7 @@ namespace Net {
   };
   class SockDgram : public Sock {
   public:
-    IOResult Connect(std::string& error_out, Address& target_address);
+    IOResult Connect(std::string& error_out, const Address& target_address);
     IOResult Receive(std::string& error_out,
                      void* buf, size_t& len_inout);
     IOResult Send(std::string& error_out,

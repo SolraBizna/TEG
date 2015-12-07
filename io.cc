@@ -4,6 +4,7 @@
 #include <string.h>
 #include <errno.h>
 #include <stdarg.h>
+#include <limits.h>
 
 static FILE* OpenDataFileForReadStupidWindowsHack(const char* path);
 
@@ -78,7 +79,7 @@ typedef char TCHAR; //I love Windows!
 #  define CONFIG_BASE_DIR ".local/share/" GAME_PRETTY_NAME
 # endif
 #endif
-#define CONFIG_EXT ".utxt"
+#define CONFIG_EXT ""
 
 #define DATA_BASE_DIR "Data"
 
@@ -248,7 +249,6 @@ static void clean_dirseps(TCHAR* p) {
 
 /* return true if the attempt succeeded */
 static bool try_recursive_mkdir(TCHAR* path) {
-  fprintf(stderr, _T("try_recursive_mkdir: %s\n"), path);
   TCHAR* p = strrchr(path, *DIR_SEP);
   if(!p || p == path) return false;
   *p = 0;
@@ -383,6 +383,29 @@ FILE* IO::OpenConfigFileForWrite(const char* filename) {
   }
   safe_free(path);
   return ret;
+}
+
+const char* IO::GetConfigFilePath(const char* filename) {
+#if __WIN32__ && _UNICODE
+  TCHAR* tpath = get_config_path(filename);
+  char* path;
+  int string_length = WideCharToMultiByte(CP_UTF8, 0, tpath, -1, NULL, 0,
+                                          NULL, NULL);
+  path = reinterpret_cast<char*>(safe_malloc(string_lengh));
+  WideCharToMultiByte(CP_UTF8, 0, tpath, -1, path, string_length,
+                      NULL, NULL);
+  safe_free(tpath);
+#else
+  /* won't actually be modified... thank you so much, Windows~ */
+  char* path = get_config_path(filename);
+#endif
+  return path;
+}
+
+void IO::TryCreateConfigDirectory() {
+  TCHAR* path = get_config_path("Missingfi");
+  try_recursive_mkdir(path);
+  safe_free(path);
 }
 
 void IO::UpdateConfigFile(const char* filename) {

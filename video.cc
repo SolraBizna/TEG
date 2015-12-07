@@ -22,7 +22,7 @@ int32_t Video::windowed_width = DEFAULT_WINDOWED_WIDTH,
 bool Video::fullscreen_mode = true;
 bool Video::vsync = false;
 
-static const char* video_config_file = "Video Configuration";
+static const char* video_config_file = "Video Configuration.utxt";
 static const Config::Element video_config_elements[] = {
   Config::Element("fullscreen_width", fullscreen_width),
   Config::Element("fullscreen_height", fullscreen_height),

@@ -42,8 +42,10 @@
 extern "C" {
 #endif
 
+#if !NO_LUA
 #include <lua.h>
 #include <lauxlib.h>
+#endif
 
 extern int g_argc;
 extern const char** g_argv;
