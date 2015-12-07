@@ -1,6 +1,3 @@
-AR=ar
-ARFLAGS=-rsc
-
 ifndef TEG_OBJECTS
 TEG_OBJECTS:=obj/teg/config.o obj/teg/io.o obj/teg/miscutil.o obj/teg/video.o obj/teg/xgl.o obj/teg/netsock.o obj/teg/postinit.o obj/teg/main.o
 endif
