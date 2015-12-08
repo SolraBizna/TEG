@@ -5,7 +5,8 @@
 #include <forward_list>
 
 #if __WIN32__
-#include <winsock2.h>
+#include <ws2tcpip.h>
+#undef ERROR
 #else
 #include <sys/types.h>
 #include <sys/socket.h>

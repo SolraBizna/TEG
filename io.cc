@@ -46,7 +46,7 @@ static void stupidfprintf(FILE* f, const WCHAR* format, ...) {
   fwrite(thin_buffer, strlen(thin_buffer), 1, f);
 }
 static void stupidperror(const WCHAR* wat) {
-  stupidfprintf(stderr, L"%s: %s\n", wat, _wcserror(errno));
+  stupidfprintf(stderr, L"%S: %s\n", wat, strerror(errno));
 }
 # endif
 # define strlen _tcslen
@@ -304,7 +304,7 @@ static TCHAR* get_raw_path(const char* in_path) {
 #if __WIN32__ && _UNICODE
   int string_length = MultiByteToWideChar(CP_UTF8, 0, in_path, -1, NULL, 0);
   path = reinterpret_cast<TCHAR*>(safe_malloc(string_length * sizeof(TCHAR)));
-  MultiByteToWideChar(CP_UTF8, 0, in_filename, -1, filename, string_length);
+  MultiByteToWideChar(CP_UTF8, 0, in_path, -1, path, string_length);
 #else
   path = teg_strdup(in_path);
 #endif
@@ -391,7 +391,7 @@ const char* IO::GetConfigFilePath(const char* filename) {
   char* path;
   int string_length = WideCharToMultiByte(CP_UTF8, 0, tpath, -1, NULL, 0,
                                           NULL, NULL);
-  path = reinterpret_cast<char*>(safe_malloc(string_lengh));
+  path = reinterpret_cast<char*>(safe_malloc(string_length));
   WideCharToMultiByte(CP_UTF8, 0, tpath, -1, path, string_length,
                       NULL, NULL);
   safe_free(tpath);

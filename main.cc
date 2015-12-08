@@ -27,7 +27,7 @@ extern "C" int wmain(int argc, WCHAR* w_argv[]) {
     WideCharToMultiByte(CP_UTF8, 0, w_argv[n], -1, argv[n], len, NULL, NULL);
   }
   g_argc = argc;
-  g_argv = argv;
+  g_argv = const_cast<const char**>(argv);
 #ifndef TEG_NO_POSTINIT
   TEG::DoPostInit();
 #endif
@@ -43,6 +43,10 @@ extern "C" int main(int argc, char* argv[]) {
   if(!command_line) die("No command line?!");
   w_argv = CommandLineToArgvW(command_line, &w_argc);
   return wmain(w_argc, w_argv);
+}
+
+extern "C" int WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
+  return main(0, nullptr);
 }
 #else
 extern "C" int main(int argc, char* argv[]) {

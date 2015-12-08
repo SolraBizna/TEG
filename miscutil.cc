@@ -4,11 +4,52 @@
 
 #include <stdarg.h>
 
+#if __WIN32__
+/*
+Copyright (C) 2014 insane coder (http://insanecoding.blogspot.com/,
+http://asprintf.insanecoding.org/)
+
+Permission to use, copy, modify, and distribute this software for any
+purpose with or without fee is hereby granted, provided that the above
+copyright notice and this permission notice appear in all copies.
+
+THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
+WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
+MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
+ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
+ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
+OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+*/
+#include <limits.h>
+int vasprintf(char **strp, const char *fmt, va_list ap)
+{
+  int r = -1, size = _vscprintf(fmt, ap);
+
+  if ((size >= 0) && (size < INT_MAX))
+    {
+      *strp = (char *)safe_malloc(size+1); //+1 for null
+      if (*strp)
+        {
+          r = vsnprintf(*strp, size+1, fmt, ap);  //+1 for null
+          if ((r < 0) || (r > size))
+            {
+              safe_free(*strp);
+              r = -1;
+            }
+        }
+    }
+  else { *strp = 0; }
+
+  return(r);
+}
+#endif
+
 extern void* safe_malloc(size_t size) {
   if(size == 0) return NULL;
   else {
     void* ret = malloc(size);
-    if(ret == NULL) die("couldn't malloc %zu bytes", size);
+    if(ret == NULL) die("couldn't malloc %lu bytes", (unsigned long)size);
     return ret;
   }
 }
@@ -21,7 +62,8 @@ extern void* safe_calloc(size_t nmemb, size_t size) {
   if(nmemb == 0 || size == 0) return NULL;
   else {
     void* ret = calloc(nmemb, size);
-    if(ret == NULL) die("couldn't calloc %zu x %zu bytes", nmemb, size);
+    if(ret == NULL) die("couldn't calloc %lu x %lu bytes",
+                        (unsigned long)nmemb, (unsigned long)size);
     return ret;
   }
 }
@@ -34,7 +76,7 @@ extern void* safe_realloc(void* ptr, size_t size) {
   else if(ptr == NULL) return safe_malloc(size);
   else {
     void* ret = realloc(ptr, size);
-    if(ret == NULL) die("couldn't realloc %zu bytes", size);
+    if(ret == NULL) die("couldn't realloc %lu bytes", (unsigned long)size);
     return ret;
   }
 }

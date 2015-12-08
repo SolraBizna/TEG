@@ -20,12 +20,18 @@
 
 #define __STDC_FORMAT_MACROS 1
 
+#if __WIN32__
+// Why? Dunno
+#include <winsock2.h>
+#endif
+
 #include <stdint.h>
 #include <inttypes.h>
 
 #ifdef __WIN32__
 # define DIR_SEP "\\"
 # include <windows.h>
+# undef KEY_EXECUTE
 #else
 # define DIR_SEP "/"
 # include <sys/types.h>
