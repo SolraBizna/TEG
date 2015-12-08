@@ -423,20 +423,50 @@ void IO::UpdateConfigFile(const char* filename) {
 }
 
 #if __WIN32__
+TCHAR* get_relative_path(const char* in_filename) {
+  TCHAR* filename;
+#if _UNICODE
+  int string_length = MultiByteToWideChar(CP_UTF8, 0, in_filename, -1, NULL, 0);
+  filename = reinterpret_cast<TCHAR*>(safe_malloc(string_length * sizeof(TCHAR)));
+  MultiByteToWideChar(CP_UTF8, 0, in_filename, -1, filename, string_length);
+#else
+  /* won't actually be modified... thank you so much, Windows~ */
+  filename = const_cast<char*>(in_filename);
+#endif
+  const TCHAR* self_path = GetSelfPath();
+  size_t len = strlen(self_path) + strlen(filename) + 2;
+  TCHAR* path = (TCHAR*)safe_malloc(len * sizeof(TCHAR));
+  snprintf(path, len, _T("%s" DIR_SEP "%s"),
+           self_path, filename);
+  clean_dirseps(path);
+#if _UNICODE
+  safe_free(filename);
+#endif
+  return path;
+}
+
 void IO::DoRedirectOutput() {
   /* lots of copy-pasting here... */
-  TCHAR* path = get_config_path("stdout");
+  TCHAR* path = get_relative_path("stdout.utxt");
   if(!freopen(path, _T("wb"), stdout)) {
-    if(errno == ENOENT) {
-      if(!try_recursive_mkdir(path)) return; // If try_recursive_mkdir failed, attempting to redirect stderr is pointless
-      freopen(path, _T("wb"), stdout);
+    safe_free(path);
+    path = get_config_path("stdout.utxt");
+    if(!freopen(path, _T("wb"), stdout)) {
+      if(errno == ENOENT) {
+        if(!try_recursive_mkdir(path)) return; // If try_recursive_mkdir failed, attempting to redirect stderr is pointless
+        freopen(path, _T("wb"), stdout);
+      }
+      /* if it failed, oh well */
     }
-    /* if it failed, oh well */
   }
   safe_free(path);
-  path = get_config_path("stderr");
-  freopen(path, _T("wb"), stderr);
-  /* don't try_recursive_mkdir again because why would that even happen? */
+  path = get_relative_path("stderr.utxt");
+  if(!freopen(path, _T("wb"), stderr)) {
+    safe_free(path);
+    path = get_config_path("stderr.utxt");
+    freopen(path, _T("wb"), stderr);
+    /* don't try_recursive_mkdir again because why would that even happen? */
+  }
   safe_free(path);
 }
 #endif
