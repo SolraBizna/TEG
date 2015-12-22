@@ -7,9 +7,9 @@
 #  include <wspiapi.h>
 # endif
 #else
-#include <arpa/inet.h>
-#include <netdb.h>
-#include <signal.h>
+# include <arpa/inet.h>
+# include <netdb.h>
+# include <signal.h>
 #endif
 
 using namespace Net;

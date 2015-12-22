@@ -3,6 +3,7 @@
 
 #include "teg.hh"
 #include <forward_list>
+#include <string.h>
 
 #if __WIN32__
 #include <ws2tcpip.h>

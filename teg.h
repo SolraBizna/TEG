@@ -39,10 +39,14 @@
 # include <unistd.h>
 #endif
 
-#include "SDL.h"
-#include "SDL_opengl.h"
-#include <GL/glu.h> // yuck
+#if !NO_SDL
+# include "SDL.h"
+# if !NO_OPENGL
+#  include "SDL_opengl.h"
+#  include <GL/glu.h> // yuck
 //#include OPENAL_H
+# endif
+#endif
 
 #ifdef __cplusplus
 extern "C" {
@@ -63,7 +67,11 @@ extern void* calloc(size_t nmemb, size_t size) __attribute__((error("Use safe_ca
 extern void* realloc(void* ptr, size_t size) __attribute__((error("Use safe_realloc instead.")));
 #endif
 
-extern char* strdup(const char* src) __attribute__((error("Use teg_strdup instead.")));
+extern char* strdup(const char* src)
+#if __cplusplus
+  throw()
+#endif
+  __attribute__((error("Use teg_strdup instead.")));
 
 /* Versions of the standard C allocation functions that are guaranteed to
    conform to our expectations. */

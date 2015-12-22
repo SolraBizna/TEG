@@ -1,7 +1,10 @@
 #define NO_MASK_MALLOC 1
 #include "teg.hh"
+#if !NO_OPENGL
 #include "video.hh"
+#endif
 
+#include <string.h>
 #include <stdarg.h>
 
 #if __WIN32__
@@ -81,6 +84,7 @@ extern void* safe_realloc(void* ptr, size_t size) {
   }
 }
 
+#if !NO_OPENGL
 extern void _assertgl(const char* file, int line, const char* name) {
   GLenum error;
   int had_error = 0;
@@ -95,6 +99,7 @@ extern void _assertgl(const char* file, int line, const char* name) {
     die("OpenGL errors occurred, see stderr.");
 #endif
 }
+#endif
 
 extern char* teg_strdup(const char* src) {
   /* Very annoyed at Microsoft right now. */
