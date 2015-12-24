@@ -10,6 +10,7 @@
 # include <arpa/inet.h>
 # include <netdb.h>
 # include <signal.h>
+# include <netinet/tcp.h>
 #endif
 
 using namespace Net;
@@ -328,6 +329,10 @@ IOResult SockStream::Connect(std::string& error_out,
                              bool initially_blocking) {
   if(!Init(error_out, target_address.faceless.sa_family, SOCK_STREAM, initially_blocking))
     return IOResult::ERROR;
+  /* try to disable Nagle's algorithm, ignore error */
+  int one = 1;
+  setsockopt(sock, IPPROTO_TCP, TCP_NODELAY, reinterpret_cast<char*>(&one),
+             sizeof(int));
   if(connect(sock, &target_address.faceless, target_address.Length())) {
     auto err = last_error;
     switch(err) {
@@ -570,6 +575,10 @@ bool ServerSockStream::Accept(SockStream& sock_out, Address& address_out) {
   socklen_t address_len = sizeof(address_out);
   SOCKET sock = accept(this->sock, &address_out.faceless, &address_len);
   if(sock != INVALID_SOCKET) {
+    /* try to disable Nagle's algorithm, ignore error */
+    int one = 1;
+    setsockopt(sock, IPPROTO_TCP, TCP_NODELAY, reinterpret_cast<char*>(&one),
+               sizeof(int));
     sock_out.Become(sock);
     return true;
   }
