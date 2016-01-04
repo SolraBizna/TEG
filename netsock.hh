@@ -173,7 +173,11 @@ namespace Net {
   };
   class SockDgram : public Sock {
   public:
+    /* a socket that talks to someone else */
     IOResult Connect(std::string& error_out, const Address& target_address);
+    /* a socket that talks to itself
+       only returns ERROR or OKAY */
+    IOResult MakeLoop(std::string& error_out);
     IOResult Receive(std::string& error_out,
                      void* buf, size_t& len_inout);
     IOResult Send(std::string& error_out,

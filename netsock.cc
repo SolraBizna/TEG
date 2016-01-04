@@ -450,6 +450,46 @@ IOResult SockDgram::Connect(std::string& error_out,
   return IOResult::OKAY;
 }
 
+IOResult SockDgram::MakeLoop(std::string& error_out) {
+  bool v6 = false;
+  if(!Init(error_out, AF_INET, SOCK_DGRAM, true)) {
+    v6 = true;
+    if(!Init(error_out, AF_INET6, SOCK_DGRAM, true))
+      return IOResult::ERROR;
+  }
+  Address addr;
+  if(v6) {
+    addr.in6.sin6_family = AF_INET6;
+    addr.in6.sin6_addr = IN6ADDR_LOOPBACK_INIT;
+    addr.in6.sin6_port = 0;
+  }
+  else {
+    addr.in.sin_family = AF_INET;
+    addr.in.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
+    addr.in.sin_port = 0;
+  }
+  if(bind(sock, &addr.faceless, addr.Length())) {
+    auto err = last_error;
+    error_out = std::string("Could not MakeLoop: bind: ") + error_string(err);
+    return IOResult::ERROR;
+  }
+  socklen_t len = sizeof(addr);
+  if(getsockname(sock, &addr.faceless, &len)) {
+    auto err = last_error;
+    error_out = std::string("Could not MakeLoop: getsockname: ")
+      + error_string(err);
+    return IOResult::ERROR;
+  }
+  if(connect(sock, &addr.faceless, addr.Length())) {
+    auto err = last_error;
+    error_out = std::string("Could not MakeLoop with address ")
+      + addr.ToLongString() + ": connect: " + error_string(err);
+    return IOResult::ERROR;
+  }
+  SetBlocking(false);
+  return IOResult::OKAY;
+}
+
 IOResult SockDgram::Receive(std::string& error_out,
                             void* buf, size_t& len_inout) {
   if(!Valid()) {
