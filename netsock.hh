@@ -223,7 +223,7 @@ namespace Net {
            const std::forward_list<SockStream*>* write_s,
            const std::forward_list<SockDgram*>* read_d,
            const std::forward_list<SockDgram*>* write_d,
-           size_t max_timeout_us = 0);
+           size_t max_timeout_us = ~(size_t)0);
     inline const std::forward_list<ServerSockStream*>&
     GetReadableServerSockStreams() { return readable_ss; }
     inline const std::forward_list<ServerSockDgram*>&

@@ -729,15 +729,21 @@ Select::Select(const std::forward_list<ServerSockStream*>* read_ss,
   SOCK_INTO_SET(write_d, writefds);
 #undef SOCK_INTO_SET
   struct timeval timeout;
-  timeout.tv_sec = max_timeout_us / 1000000;
-  timeout.tv_usec = max_timeout_us % 1000000;
+  struct timeval* timeout_ptr;
+  if(max_timeout_us == ~(size_t)0) timeout_ptr = nullptr;
+  else {
+    timeout_ptr = &timeout;
+    timeout.tv_sec = max_timeout_us / 1000000;
+    timeout.tv_usec = max_timeout_us % 1000000;
+  }
  intr_retry:
-  int nset = select(nfds, &readfds, &writefds, NULL, &timeout);
+  int nset = select(nfds, &readfds, &writefds, NULL, timeout_ptr);
   if(nset < 0) {
     switch(last_error) {
     case WSAEINTR:
       timeout.tv_sec = 0;
       timeout.tv_usec = 0;
+      timeout_ptr = &timeout;
       goto intr_retry;
     default:
       die("select() error: %s", error_string());
