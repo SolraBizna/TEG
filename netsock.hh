@@ -123,6 +123,10 @@ namespace Net {
               bool blocking = false);
     void Become(SOCKET sock, bool blocking = false);
   public:
+    // If a Bind function puts this exact value into error_out, EADDRINUSE has
+    // occurred. The bind may succeed if you wait and retry.
+    // Special handling of this is NOT required.
+    static const std::string ADDRESS_IN_USE;
     inline Sock(Sock&& other) {
       if(&other == this) return;
       sock = other.sock;

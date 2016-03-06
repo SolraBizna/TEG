@@ -92,6 +92,7 @@ static const char* inet_ntop(int af, const void* src, char* dst, DWORD cnt) {
 # define WSAEINTR EINTR
 # define WSAEINPROGRESS EINPROGRESS
 # define WSAEMSGSIZE EMSGSIZE
+# define WSAEADDRINUSE EADDRINUSE
 #endif
 
 static const char* error_string(int err = last_error) {
@@ -115,6 +116,8 @@ static bool have_inited_sockets = false;
 #ifdef __WIN32__
 static WSADATA wsaData;
 #endif
+
+const std::string Sock::ADDRESS_IN_USE = "Unable to bind: Address already in use";
 
 static void init_sockets() {
   have_inited_sockets = true;
@@ -593,7 +596,11 @@ bool ServerSock::SubBind(std::string& error_out, const char* bind_address,
   case IPVersion::V6: addr.in6.sin6_port = htons(port); break;
   }
   if(bind(sock, &addr.faceless, addr.Length())) {
-    error_out = std::string("Unable to bind: ") + error_string();
+    int err = last_error;
+    if(err == WSAEADDRINUSE)
+      error_out = ADDRESS_IN_USE;
+    else
+      error_out = std::string("Unable to bind: ") + error_string(last_error);
     Close();
     return false;
   }
