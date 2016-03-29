@@ -5,26 +5,24 @@
 #include <errno.h>
 #include <stdarg.h>
 #include <limits.h>
+#include <fstream>
 
-static FILE* OpenDataFileForReadStupidWindowsHack(const char* path);
+static std::unique_ptr<std::istream>
+OpenDataFileForReadStupidWindowsHack(const std::string& path);
 
-FILE* IO::OpenDataFileForRead(const char* format, ...) {
-  std::string path;
-  va_list arg;
-  va_start(arg, format);
-  path = TEG::vformat(format, arg);
-  va_end(arg);
-  {
-    for(char* p = const_cast<char*>(path.c_str()); *p; ++p) {
-      if(*p == '.' && (p == path.c_str() || p[-1] == '/'))
-        die("Attempt to access an illegal datafile path: %s", path.c_str());
-      else if(*DIR_SEP != '/') {
-        if(*p == '/') *p = *DIR_SEP;
-        else if(*p == *DIR_SEP) *p = '/';
-      }
+std::unique_ptr<std::istream>
+IO::OpenDataFileForRead(const std::string& path) {
+  std::string massaged_path(path);
+  auto it = massaged_path.begin();
+  while(it != massaged_path.end()) {
+    if(*it == '.' && (it == path.begin() || it[-1] == '/'))
+      die("Attempt to access an illegal datafile path: %s", path.c_str());
+    else if(*DIR_SEP != '/') {
+      if(*it == '/') *it = *DIR_SEP;
+      else if(*it == *DIR_SEP) *it = '/';
     }
   }
-  return OpenDataFileForReadStupidWindowsHack(path.c_str());
+  return OpenDataFileForReadStupidWindowsHack(path);
 }
 
 #ifdef __WIN32__
@@ -289,14 +287,17 @@ static TCHAR* get_data_path(const char* in_filename) {
   return path;
 }
 
-FILE* OpenDataFileForReadStupidWindowsHack(const char* filename) {
-  TCHAR* path = get_data_path(filename);
-  FILE* ret = fopen(path, _T("rb"));
-  if(!ret) {
+std::unique_ptr<std::istream>
+OpenDataFileForReadStupidWindowsHack(const std::string& filename) {
+  TCHAR* path = get_data_path(filename.c_str());
+  std::unique_ptr<std::ifstream> ret(new std::ifstream());
+  ret->open(path, std::ios::binary | std::ios::in);
+  if(!ret->good()) {
     perror(path);
+    ret.reset();
   }
   safe_free(path);
-  return ret;
+  return std::move(ret);
 }
 
 static TCHAR* get_raw_path(const char* in_path) {
@@ -312,22 +313,30 @@ static TCHAR* get_raw_path(const char* in_path) {
   return path;
 }
 
-FILE* IO::OpenRawPathForRead(const char* filename, bool log_error) {
-  TCHAR* path = get_raw_path(filename);
-  FILE* ret = fopen(path, _T("rb"));
-  if(!ret && log_error)
-    perror(path);
+std::unique_ptr<std::istream>
+IO::OpenRawPathForRead(const std::string& filename, bool log_error) {
+  TCHAR* path = get_raw_path(filename.c_str());
+  std::unique_ptr<std::ifstream> ret(new std::ifstream());
+  ret->open(path, std::ios::binary | std::ios::in);
+  if(!ret->good()) {
+    if(log_error) perror(path);
+    ret.reset();
+  }
   safe_free(path);
-  return ret;
+  return std::move(ret);
 }
 
-FILE* IO::OpenRawPathForWrite(const char* filename, bool log_error) {
-  TCHAR* path = get_raw_path(filename);
-  FILE* ret = fopen(path, _T("wb"));
-  if(!ret && log_error)
-    perror(path);
+std::unique_ptr<std::ostream>
+IO::OpenRawPathForWrite(const std::string& filename, bool log_error) {
+  TCHAR* path = get_raw_path(filename.c_str());
+  std::unique_ptr<std::ofstream> ret(new std::ofstream());
+  ret->open(path, std::ios::binary | std::ios::out);
+  if(!ret->good()) {
+    if(log_error) perror(path);
+    ret.reset();
+  }
   safe_free(path);
-  return ret;
+  return std::move(ret);
 }
 
 enum path_type {
@@ -356,38 +365,45 @@ static TCHAR* get_config_path(const char* in_filename, path_type wat=NORMAL) {
   return path;
 }
 
-FILE* IO::OpenConfigFileForRead(const char* filename) {
-  TCHAR* path = get_config_path(filename);
-  FILE* ret = fopen(path, _T("rb"));
-  if(!ret && errno == ENOENT) {
+std::unique_ptr<std::istream>
+IO::OpenConfigFileForRead(const std::string& filename) {
+  TCHAR* path = get_config_path(filename.c_str());
+  std::unique_ptr<std::ifstream> ret(new std::ifstream());
+  ret->open(path, std::ios::binary | std::ios::in);
+  if(!ret->good() && errno == ENOENT) {
     safe_free(path);
-    path = get_config_path(filename, BACKUP);
-    ret = fopen(path, _T("rb"));
+    path = get_config_path(filename.c_str(), BACKUP);
+    ret->clear();
+    ret->open(path, std::ios::binary | std::ios::in);
   }
-  if(!ret && errno != ENOENT)
+  if(!ret->good()) {
+    if(errno != ENOENT) perror(path);
+    ret.reset();
+  }
+  safe_free(path);
+  return std::move(ret);
+}
+
+std::unique_ptr<std::ostream>
+IO::OpenConfigFileForWrite(const std::string& filename) {
+  TCHAR* path = get_config_path(filename.c_str(), EDIT);
+  std::unique_ptr<std::ofstream> ret(new std::ofstream());
+  ret->open(path, std::ios::binary | std::ios::out);
+  if(!ret->good() && errno == ENOENT && try_recursive_mkdir(path)) {
+    ret->clear();
+    ret->open(path, std::ios::binary | std::ios::out);
+  }
+  if(!ret->good()) {
     perror(path);
-  safe_free(path);
-  return ret;
-}
-
-FILE* IO::OpenConfigFileForWrite(const char* filename) {
-  TCHAR* path = get_config_path(filename, EDIT);
-  FILE* ret = fopen(path, _T("wb"));
-  if(!ret) {
-    if(errno == ENOENT) {
-      if(!try_recursive_mkdir(path)) return NULL;
-      ret = fopen(path, _T("wb"));
-    }
-    if(!ret)
-      perror(path);
+    ret.reset();
   }
   safe_free(path);
-  return ret;
+  return std::move(ret);
 }
 
-const char* IO::GetConfigFilePath(const char* filename) {
+std::string IO::GetConfigFilePath(const std::string& filename) {
 #if __WIN32__ && _UNICODE
-  TCHAR* tpath = get_config_path(filename);
+  TCHAR* tpath = get_config_path(filename.c_str());
   char* path;
   int string_length = WideCharToMultiByte(CP_UTF8, 0, tpath, -1, NULL, 0,
                                           NULL, NULL);
@@ -397,9 +413,11 @@ const char* IO::GetConfigFilePath(const char* filename) {
   safe_free(tpath);
 #else
   /* won't actually be modified... thank you so much, Windows~ */
-  char* path = get_config_path(filename);
+  char* path = get_config_path(filename.c_str());
 #endif
-  return path;
+  std::string ret(path);
+  safe_free(path);
+  return ret;
 }
 
 void IO::TryCreateConfigDirectory() {
@@ -408,10 +426,10 @@ void IO::TryCreateConfigDirectory() {
   safe_free(path);
 }
 
-void IO::UpdateConfigFile(const char* filename) {
-  TCHAR* path_normal = get_config_path(filename, NORMAL);
-  TCHAR* path_backup = get_config_path(filename, BACKUP);
-  TCHAR* path_edit = get_config_path(filename, EDIT);
+void IO::UpdateConfigFile(const std::string& filename) {
+  TCHAR* path_normal = get_config_path(filename.c_str(), NORMAL);
+  TCHAR* path_backup = get_config_path(filename.c_str(), BACKUP);
+  TCHAR* path_edit = get_config_path(filename.c_str(), EDIT);
   /* optimistically assume success on all the below operations */
   /* TODO: fsync/_commit this file */
   remove(path_backup);
