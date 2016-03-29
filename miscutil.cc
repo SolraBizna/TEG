@@ -8,6 +8,8 @@
 #include <stdarg.h>
 
 #if __WIN32__
+/* The following copyright notice applies to the implementation of vasprintf
+   that occurs below. */
 /*
 Copyright (C) 2014 insane coder (http://insanecoding.blogspot.com/,
 http://asprintf.insanecoding.org/)
