@@ -24,6 +24,7 @@ IO::OpenDataFileForRead(const std::string& path) {
       if(*it == '/') *it = *DIR_SEP;
       else if(*it == *DIR_SEP) *it = '/';
     }
+    ++it;
   }
   return OpenDataFileForReadStupidWindowsHack(path);
 }
