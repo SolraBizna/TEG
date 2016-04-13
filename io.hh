@@ -9,6 +9,9 @@
 #include <iostream>
 #include <string>
 #include <memory>
+#ifdef TEG_USE_SN
+#include "sn.hh"
+#endif
 
 namespace IO {
   /* Only use these two for tools! */
@@ -35,6 +38,9 @@ namespace IO {
   void TryCreateConfigDirectory();
 #if __WIN32__
   void DoRedirectOutput();
+#endif
+#ifdef TEG_USE_SN
+  std::shared_ptr<SN::CatSource> GetSNCatSource();
 #endif
 };
 

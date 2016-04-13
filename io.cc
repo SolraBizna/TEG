@@ -6,6 +6,9 @@
 #include <stdarg.h>
 #include <limits.h>
 #include <fstream>
+#if TEG_USE_SN && !defined(__WIN32__)
+#include <dirent.h>
+#endif
 
 static std::unique_ptr<std::istream>
 OpenDataFileForReadStupidWindowsHack(const std::string& path);
@@ -80,6 +83,7 @@ typedef char TCHAR; //I love Windows!
 #define CONFIG_EXT ""
 
 #define DATA_BASE_DIR "Data"
+#define LANG_BASE_DIR "Lang"
 
 extern "C" const TCHAR* g_argv0;
 
@@ -486,5 +490,72 @@ void IO::DoRedirectOutput() {
     /* don't try_recursive_mkdir again because why would that even happen? */
   }
   safe_free(path);
+}
+#endif
+
+#if TEG_USE_SN
+namespace {
+  class TegCatSource : public SN::CatSource {
+    static const std::string SUFFIX;
+    TCHAR* base_path;
+  public:
+    TegCatSource() {
+      base_path = get_data_path(LANG_BASE_DIR DIR_SEP);
+    }
+    ~TegCatSource() {
+      if(base_path != nullptr) safe_free(base_path);
+    }
+    void GetAvailableCats(std::function<void(std::string)> func) {
+#ifdef __WIN32__
+#error NIY
+#else
+      DIR* d = opendir(base_path);
+      if(d) {
+        struct dirent* ent;
+        while((ent = readdir(d))) {
+          if(ent->d_name[0] == '.'
+#ifdef DT_REG
+             || ent->d_type != DT_REG
+#endif
+             ) continue;
+          std::string name(ent->d_name);
+          if(name.compare(name.length()-SUFFIX.length(), name.length(),
+                          SUFFIX) != 0)
+            continue;
+          std::string code(name.begin(),
+                           name.begin()+(name.length()-SUFFIX.length()));
+          for(auto& c : code) {
+            if(c == '-') continue;
+            else if(c == '_') c = '-';
+          }
+          if(SN::IsValidLanguageCode(code)) func(std::move(code));
+        }
+        closedir(d);
+      }
+#endif
+    }
+    std::shared_ptr<std::istream> OpenCat(const std::string& cat) {
+      std::string path_string(LANG_BASE_DIR DIR_SEP + cat + SUFFIX);
+      TCHAR* path = get_data_path(path_string.c_str());
+      std::unique_ptr<std::ifstream> ret(new std::ifstream());
+      ret->open(path, std::ios::binary | std::ios::in);
+      if(!ret->good()) {
+        perror(path);
+        ret.reset();
+      }
+      safe_free(path);
+      return std::move(ret);
+    }
+  };
+#ifndef TEG_SN_CAT_EXTENSION
+#define TEG_SN_CAT_EXTENSION ".utxt"
+#endif
+  const std::string TegCatSource::SUFFIX(TEG_SN_CAT_EXTENSION);
+}
+
+std::shared_ptr<SN::CatSource> IO::GetSNCatSource() {
+  static std::shared_ptr<SN::CatSource> src
+    = std::make_shared<TegCatSource>();
+  return src;
 }
 #endif
