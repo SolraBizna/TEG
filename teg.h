@@ -93,6 +93,11 @@ extern char* teg_strdup(const char* src);
 extern void die(const char* format, ...) __attribute__((noreturn,
                                                         format(printf,1,2)));
 
+/* Some sloppy systems include <assert.h> from random system headers */
+#ifdef assert
+#undef assert
+#endif
+
 #if DEBUG
 #define assert(expr) if(!(expr)) die("%s:%i: Assertion failed (%s)", __FILE__, __LINE__, #expr)
 #else
