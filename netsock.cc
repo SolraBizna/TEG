@@ -571,6 +571,7 @@ bool ServerSock::SubBind(std::string& error_out, const char* bind_address,
   int e;
   if(bind_address) {
     switch(v) {
+    default: die("Unknown IPVersion passed to ServerSock::Bind"); break;
     case IPVersion::V4: e = inet_pton((int)v, bind_address, &addr.in.sin_addr); break;
     case IPVersion::V6: e = inet_pton((int)v, bind_address, &addr.in6.sin6_addr); break;
     }
