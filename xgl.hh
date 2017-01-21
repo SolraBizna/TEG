@@ -29,6 +29,10 @@ namespace xgl {
   EXTERN void(*GetBufferParameteriv)(GLenum target, GLenum pname, GLint* v);
   EXTERN void(*GetBufferPointerv)(GLenum target, GLenum pname, void** v);
 #endif
+#if XGL_ENABLE_PBO
+  /* ARB_pixel_buffer_object */
+  EXTERN bool have_ARB_pixel_buffer_object;
+#endif
 #if XGL_ENABLE_RECTANGLE_TEXTURES
   /* ARB_texture_rectangle */
   EXTERN bool have_ARB_texture_rectangle;
