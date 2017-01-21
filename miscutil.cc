@@ -119,7 +119,9 @@ extern void die(const char* format, ...) {
   va_start(arg, format);
   vsnprintf(error, sizeof(error), format, arg);
   va_end(arg);
+#if !NO_OPENGL
   Video::Kill();
+#endif
   fprintf(stderr, "%s encountered a fatal error:\n%s\n", GAME_PRETTY_NAME,
           error);
   if(SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR,
