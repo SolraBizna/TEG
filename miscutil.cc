@@ -113,6 +113,10 @@ extern char* teg_strdup(const char* src) {
 }
 
 #ifndef TEG_NO_DIE_IMPLEMENTATION
+#if TEG_USE_SN
+#include "sn.hh"
+extern SN::Context sn;
+#endif
 extern void die(const char* format, ...) {
   char error[1920]; // enough to fill up an 80x24 terminal
   va_list arg;
@@ -122,15 +126,22 @@ extern void die(const char* format, ...) {
 #if !NO_OPENGL
   Video::Kill();
 #endif
-  fprintf(stderr, "%s encountered a fatal error:\n%s\n", GAME_PRETTY_NAME,
-          error);
+#if TEG_USE_SN
+  std::cerr << sn.Get("CERR_FATAL_ERROR"_Key, {GAME_PRETTY_NAME, error});
+#else
+  std::cerr << GAME_PRETTY_NAME << " encountered a fatal error:\n"
+            << error << "\n";
+#endif
   if(SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR,
                               GAME_PRETTY_NAME" encountered a fatal error.",
                               error, NULL)) {
-    fprintf(stderr,
-            "Additionally, there was an error when attempting to use SDL to"
-            " display this\nerror message: %s\n",
-            SDL_GetError());
+#if TEG_USE_SN
+    std::cerr << sn.Get("CERR_FATAL_FALLBACK"_Key, {SDL_GetError()});
+#else
+    std::cerr << "Additionally, there was an error when attempting to use SDL"
+                 " to display this\nerror message: "
+              << SDL_GetError() << "\n";
+#endif
   }
   exit(1);
 }
