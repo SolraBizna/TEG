@@ -164,7 +164,7 @@ std::string TEG::vformat(const char* format, va_list arg) {
   return ret;
 }
 
-std::string TEG::format(const std::string& format, ...) {
+std::string TEG::format(const std::string format, ...) {
   va_list arg;
   va_start(arg, format);
   std::string ret = TEG::vformat(format.c_str(), arg);
@@ -172,6 +172,6 @@ std::string TEG::format(const std::string& format, ...) {
   return ret;
 }
 
-std::string TEG::vformat(const std::string& format, va_list arg) {
+std::string TEG::vformat(const std::string format, va_list arg) {
   return TEG::vformat(format.c_str(), arg);
 }

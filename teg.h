@@ -67,11 +67,13 @@ extern void* calloc(size_t nmemb, size_t size) __attribute__((error("Use safe_ca
 extern void* realloc(void* ptr, size_t size) __attribute__((error("Use safe_realloc instead.")));
 #endif
 
+#ifndef NO_MASK_STRDUP
 extern char* strdup(const char* src)
 #if __cplusplus
   throw()
 #endif
   __attribute__((error("Use teg_strdup instead.")));
+#endif
 
 /* Versions of the standard C allocation functions that are guaranteed to
    conform to our expectations. */
