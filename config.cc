@@ -4,6 +4,7 @@
 #include <iomanip>
 #include <string.h>
 #include <errno.h>
+#include <math.h>
 
 using namespace Config;
 using namespace IO;

@@ -102,6 +102,48 @@ static TCHAR* ExecutablePathToContentsPath(TCHAR* in_path) {
 #define ExecutablePathToContentsPath(x) x
 #endif
 
+#ifdef __WIN32__
+// https://stackoverflow.com/questions/23969094/c-ifstream-long-full-path-not-working/23969243#23969243
+#include <ext/stdio_filebuf.h>
+class ifstream : public std::ifstream {
+private:
+  __gnu_cxx::stdio_filebuf<char> buf_;
+  std::streambuf* p_original_buf_;
+public:
+  ~ifstream() {
+    basic_ios::rdbuf( p_original_buf_ );
+    buf_.close();
+  }
+  ifstream(const TCHAR* filename,
+           std::ios_base::openmode mode = std::ios_base::in)
+    : std::ifstream(),
+      buf_(fopen(filename, _T("rb")), mode),
+      p_original_buf_(nullptr) {
+    p_original_buf_ = basic_ios::rdbuf(&buf_);
+  }
+};
+class ofstream : public std::ofstream {
+private:
+  __gnu_cxx::stdio_filebuf<char> buf_;
+  std::streambuf* p_original_buf_;
+public:
+  ~ofstream() {
+    basic_ios::rdbuf( p_original_buf_ );
+    buf_.close();
+  }
+  ofstream(const TCHAR* filename,
+           std::ios_base::openmode mode = std::ios_base::out)
+    : std::ofstream(),
+      buf_(fopen(filename, _T("wb")), mode),
+      p_original_buf_(nullptr) {
+    p_original_buf_ = basic_ios::rdbuf(&buf_);
+  }
+};
+#else
+using std::ifstream;
+using std::ofstream;
+#endif
+
 static const TCHAR* GetSelfPath() {
   static TCHAR* self_path = NULL;
   if(self_path == NULL) {
@@ -298,8 +340,9 @@ static TCHAR* get_data_path(const char* in_filename) {
 std::unique_ptr<std::istream>
 OpenDataFileForReadStupidWindowsHack(const std::string& filename) {
   TCHAR* path = get_data_path(filename.c_str());
-  std::unique_ptr<std::ifstream> ret(new std::ifstream());
-  ret->open(path, std::ios::binary | std::ios::in);
+  std::unique_ptr<std::istream> ret(new ifstream(path,
+                                                 std::ios::binary
+                                                 |std::ios::in));
   if(!ret->good()) {
     perror(path);
     ret.reset();
@@ -324,8 +367,9 @@ static TCHAR* get_raw_path(const char* in_path) {
 std::unique_ptr<std::istream>
 IO::OpenRawPathForRead(const std::string& filename, bool log_error) {
   TCHAR* path = get_raw_path(filename.c_str());
-  std::unique_ptr<std::ifstream> ret(new std::ifstream());
-  ret->open(path, std::ios::binary | std::ios::in);
+  std::unique_ptr<std::istream> ret(new ifstream(path,
+                                                 std::ios::binary
+                                                 |std::ios::in));
   if(!ret->good()) {
     if(log_error) perror(path);
     ret.reset();
@@ -337,8 +381,9 @@ IO::OpenRawPathForRead(const std::string& filename, bool log_error) {
 std::unique_ptr<std::ostream>
 IO::OpenRawPathForWrite(const std::string& filename, bool log_error) {
   TCHAR* path = get_raw_path(filename.c_str());
-  std::unique_ptr<std::ofstream> ret(new std::ofstream());
-  ret->open(path, std::ios::binary | std::ios::out);
+  std::unique_ptr<std::ostream> ret(new ofstream(path,
+                                                 std::ios::binary
+                                                 |std::ios::out));
   if(!ret->good()) {
     if(log_error) perror(path);
     ret.reset();
@@ -376,13 +421,15 @@ static TCHAR* get_config_path(const char* in_filename, path_type wat=NORMAL) {
 std::unique_ptr<std::istream>
 IO::OpenConfigFileForRead(const std::string& filename) {
   TCHAR* path = get_config_path(filename.c_str());
-  std::unique_ptr<std::ifstream> ret(new std::ifstream());
-  ret->open(path, std::ios::binary | std::ios::in);
+  std::unique_ptr<std::istream> ret(new ifstream(path,
+                                                 std::ios::binary
+                                                 |std::ios::in));
   if(!ret->good() && errno == ENOENT) {
     safe_free(path);
     path = get_config_path(filename.c_str(), BACKUP);
-    ret->clear();
-    ret->open(path, std::ios::binary | std::ios::in);
+    ret = std::unique_ptr<std::istream>(new ifstream(path,
+                                                     std::ios::binary
+                                                     |std::ios::in));
   }
   if(!ret->good()) {
     if(errno != ENOENT) perror(path);
@@ -395,11 +442,14 @@ IO::OpenConfigFileForRead(const std::string& filename) {
 std::unique_ptr<std::ostream>
 IO::OpenConfigFileForWrite(const std::string& filename) {
   TCHAR* path = get_config_path(filename.c_str(), EDIT);
-  std::unique_ptr<std::ofstream> ret(new std::ofstream());
-  ret->open(path, std::ios::binary | std::ios::out);
+  std::unique_ptr<std::ostream> ret(new ofstream(path,
+                                                 std::ios::binary
+                                                 |std::ios::out));
   if(!ret->good() && errno == ENOENT && try_recursive_mkdir(path)) {
     ret->clear();
-    ret->open(path, std::ios::binary | std::ios::out);
+    ret = std::unique_ptr<std::ostream>(new ofstream(path,
+                                                     std::ios::binary
+                                                     |std::ios::in));
   }
   if(!ret->good()) {
     perror(path);
@@ -502,16 +552,54 @@ namespace {
   class TegCatSource : public SN::CatSource {
     static const std::string SUFFIX;
     TCHAR* base_path;
+#ifdef __WIN32__
+    TCHAR* base_pattern;
+#endif
   public:
     TegCatSource() {
       base_path = get_data_path(LANG_BASE_DIR DIR_SEP);
+#ifdef __WIN32__
+      base_pattern = get_data_path(LANG_BASE_DIR DIR_SEP "*");
+#endif
     }
     ~TegCatSource() {
       if(base_path != nullptr) safe_free(base_path);
+#ifdef __WIN32__
+      if(base_pattern != nullptr) safe_free(base_pattern);
+#endif
     }
     void GetAvailableCats(std::function<void(std::string)> func) {
 #ifdef __WIN32__
-#error NIY
+      struct _tfinddata_t ent;
+      intptr_t handle = _tfindfirst(base_pattern, &ent);
+      if(handle != -1) {
+        do {
+          if(ent.name[0] == '.'
+             || (ent.attrib & (_A_HIDDEN|_A_SUBDIR))) continue;
+#if _UNICODE
+          int len = WideCharToMultiByte(CP_UTF8, 0, ent.name, -1, nullptr, 0,
+                                        nullptr, nullptr);
+          if(len > 0) --len;
+          char* thin_buffer = reinterpret_cast<char*>(safe_malloc(len));
+          WideCharToMultiByte(CP_UTF8, 0, ent.name, -1, thin_buffer, len,
+                              nullptr, nullptr);
+          std::string name(thin_buffer, thin_buffer + len);
+          safe_free(thin_buffer);
+#else
+          std::string name(ent.name);
+#endif
+          if(name.compare(name.length()-SUFFIX.length(), name.length(),
+                          SUFFIX) != 0) continue;
+          std::string code(name.begin(),
+                           name.begin()+(name.length()-SUFFIX.length()));
+          for(auto& c : code) {
+            if(c == '-') continue;
+            else if(c == '_') c = '-';
+          }
+          if(SN::IsValidLanguageCode(code)) func(std::move(code));
+        } while(_tfindnext(handle, &ent) != -1);
+        _findclose(handle);
+      }
 #else
       DIR* d = opendir(base_path);
       if(d) {
@@ -541,8 +629,9 @@ namespace {
     std::shared_ptr<std::istream> OpenCat(const std::string& cat) {
       std::string path_string(LANG_BASE_DIR DIR_SEP + cat + SUFFIX);
       TCHAR* path = get_data_path(path_string.c_str());
-      std::unique_ptr<std::ifstream> ret(new std::ifstream());
-      ret->open(path, std::ios::binary | std::ios::in);
+      std::unique_ptr<std::istream> ret(new ifstream(path,
+                                                     std::ios::binary
+                                                     |std::ios::in));
       if(!ret->good()) {
         perror(path);
         ret.reset();
