@@ -146,7 +146,7 @@ static const TCHAR* GetSelfPath() {
 	*/
 #else
     /* UNIX-like */
-#if MACOSX
+#if MACOSX || EMSCRIPTEN
 #define DISABLE_PROC_SELF_EXE 1
 #endif
 # ifndef DISABLE_PROC_SELF_EXE
@@ -223,6 +223,9 @@ static const TCHAR* GetSelfPath() {
       safe_free(self_path);
       self_path = NULL;
     }
+#endif
+#if EMSCRIPTEN
+    self_path = const_cast<TCHAR*>(_T("."));
 #endif
     if(self_path == NULL) {
       fprintf(stderr, _T("Unable to find the path to ourselves, using the working directory!\n"));
