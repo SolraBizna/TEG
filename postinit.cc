@@ -1,3 +1,4 @@
+#define WE_ARE_POSTINIT_CC 1
 #include "postinit.hh"
 
 #include <forward_list>

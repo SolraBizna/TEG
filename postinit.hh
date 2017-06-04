@@ -25,11 +25,9 @@ namespace TEG {
       : PostInitHandler(0, handler) {}
     /* We do not provide a destructor. We assume we will be used correctly. */
   };
-  void DoPostInit()
-#if !WE_ARE_IN_CHARGE_OF_POSTINIT_HANDLING
-    __attribute__((error("You should not be calling DoPostInit.")))
+#if WE_ARE_IN_CHARGE_OF_POSTINIT_HANDLING || WE_ARE_POSTINIT_CC
+  void DoPostInit();
 #endif
-    ;
 }
 
 #endif
