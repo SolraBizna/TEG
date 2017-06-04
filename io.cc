@@ -4,26 +4,29 @@
 #include <string.h>
 #include <errno.h>
 #include <stdarg.h>
+#include <limits.h>
+#include <fstream>
+#if TEG_USE_SN && !defined(__WIN32__)
+#include <dirent.h>
+#endif
 
-static FILE* OpenDataFileForReadStupidWindowsHack(const char* path);
+static std::unique_ptr<std::istream>
+OpenDataFileForReadStupidWindowsHack(const std::string& path);
 
-FILE* IO::OpenDataFileForRead(const char* format, ...) {
-  std::string path;
-  va_list arg;
-  va_start(arg, format);
-  path = TEG::vformat(format, arg);
-  va_end(arg);
-  {
-    for(char* p = const_cast<char*>(path.c_str()); *p; ++p) {
-      if(*p == '.' && (p == path.c_str() || p[-1] == '/'))
-        die("Attempt to access an illegal datafile path: %s", path.c_str());
-      else if(*DIR_SEP != '/') {
-        if(*p == '/') *p = *DIR_SEP;
-        else if(*p == *DIR_SEP) *p = '/';
-      }
+std::unique_ptr<std::istream>
+IO::OpenDataFileForRead(const std::string& path) {
+  std::string massaged_path(path);
+  auto it = massaged_path.begin();
+  while(it != massaged_path.end()) {
+    if(*it == '.' && (it == path.begin() || it[-1] == '/'))
+      die("Attempt to access an illegal datafile path: %s", path.c_str());
+    else if(*DIR_SEP != '/') {
+      if(*it == '/') *it = *DIR_SEP;
+      else if(*it == *DIR_SEP) *it = '/';
     }
+    ++it;
   }
-  return OpenDataFileForReadStupidWindowsHack(path.c_str());
+  return OpenDataFileForReadStupidWindowsHack(path);
 }
 
 #ifdef __WIN32__
@@ -45,7 +48,7 @@ static void stupidfprintf(FILE* f, const WCHAR* format, ...) {
   fwrite(thin_buffer, strlen(thin_buffer), 1, f);
 }
 static void stupidperror(const WCHAR* wat) {
-  stupidfprintf(stderr, L"%s: %s\n", wat, _wcserror(errno));
+  stupidfprintf(stderr, L"%S: %s\n", wat, strerror(errno));
 }
 # endif
 # define strlen _tcslen
@@ -78,9 +81,10 @@ typedef char TCHAR; //I love Windows!
 #  define CONFIG_BASE_DIR ".local/share/" GAME_PRETTY_NAME
 # endif
 #endif
-#define CONFIG_EXT ".utxt"
+#define CONFIG_EXT ""
 
 #define DATA_BASE_DIR "Data"
+#define LANG_BASE_DIR "Lang"
 
 extern "C" const TCHAR* g_argv0;
 
@@ -96,6 +100,48 @@ static TCHAR* ExecutablePathToContentsPath(TCHAR* in_path) {
 }
 #else
 #define ExecutablePathToContentsPath(x) x
+#endif
+
+#ifdef __WIN32__
+// https://stackoverflow.com/questions/23969094/c-ifstream-long-full-path-not-working/23969243#23969243
+#include <ext/stdio_filebuf.h>
+class ifstream : public std::ifstream {
+private:
+  __gnu_cxx::stdio_filebuf<char> buf_;
+  std::streambuf* p_original_buf_;
+public:
+  ~ifstream() {
+    basic_ios::rdbuf( p_original_buf_ );
+    buf_.close();
+  }
+  ifstream(const TCHAR* filename,
+           std::ios_base::openmode mode = std::ios_base::in)
+    : std::ifstream(),
+      buf_(fopen(filename, _T("rb")), mode),
+      p_original_buf_(nullptr) {
+    p_original_buf_ = basic_ios::rdbuf(&buf_);
+  }
+};
+class ofstream : public std::ofstream {
+private:
+  __gnu_cxx::stdio_filebuf<char> buf_;
+  std::streambuf* p_original_buf_;
+public:
+  ~ofstream() {
+    basic_ios::rdbuf( p_original_buf_ );
+    buf_.close();
+  }
+  ofstream(const TCHAR* filename,
+           std::ios_base::openmode mode = std::ios_base::out)
+    : std::ofstream(),
+      buf_(fopen(filename, _T("wb")), mode),
+      p_original_buf_(nullptr) {
+    p_original_buf_ = basic_ios::rdbuf(&buf_);
+  }
+};
+#else
+using std::ifstream;
+using std::ofstream;
 #endif
 
 static const TCHAR* GetSelfPath() {
@@ -142,7 +188,7 @@ static const TCHAR* GetSelfPath() {
 	*/
 #else
     /* UNIX-like */
-#if MACOSX
+#if MACOSX || EMSCRIPTEN
 #define DISABLE_PROC_SELF_EXE 1
 #endif
 # ifndef DISABLE_PROC_SELF_EXE
@@ -220,6 +266,9 @@ static const TCHAR* GetSelfPath() {
       self_path = NULL;
     }
 #endif
+#if EMSCRIPTEN
+    self_path = const_cast<TCHAR*>(_T("."));
+#endif
     if(self_path == NULL) {
       fprintf(stderr, _T("Unable to find the path to ourselves, using the working directory!\n"));
       // won't actually be modified, so discarding const is okay
@@ -248,7 +297,6 @@ static void clean_dirseps(TCHAR* p) {
 
 /* return true if the attempt succeeded */
 static bool try_recursive_mkdir(TCHAR* path) {
-  fprintf(stderr, _T("try_recursive_mkdir: %s\n"), path);
   TCHAR* p = strrchr(path, *DIR_SEP);
   if(!p || p == path) return false;
   *p = 0;
@@ -289,14 +337,18 @@ static TCHAR* get_data_path(const char* in_filename) {
   return path;
 }
 
-FILE* OpenDataFileForReadStupidWindowsHack(const char* filename) {
-  TCHAR* path = get_data_path(filename);
-  FILE* ret = fopen(path, _T("rb"));
-  if(!ret) {
+std::unique_ptr<std::istream>
+OpenDataFileForReadStupidWindowsHack(const std::string& filename) {
+  TCHAR* path = get_data_path(filename.c_str());
+  std::unique_ptr<std::istream> ret(new ifstream(path,
+                                                 std::ios::binary
+                                                 |std::ios::in));
+  if(!ret->good()) {
     perror(path);
+    ret.reset();
   }
   safe_free(path);
-  return ret;
+  return std::move(ret);
 }
 
 static TCHAR* get_raw_path(const char* in_path) {
@@ -304,7 +356,7 @@ static TCHAR* get_raw_path(const char* in_path) {
 #if __WIN32__ && _UNICODE
   int string_length = MultiByteToWideChar(CP_UTF8, 0, in_path, -1, NULL, 0);
   path = reinterpret_cast<TCHAR*>(safe_malloc(string_length * sizeof(TCHAR)));
-  MultiByteToWideChar(CP_UTF8, 0, in_filename, -1, filename, string_length);
+  MultiByteToWideChar(CP_UTF8, 0, in_path, -1, path, string_length);
 #else
   path = teg_strdup(in_path);
 #endif
@@ -312,22 +364,32 @@ static TCHAR* get_raw_path(const char* in_path) {
   return path;
 }
 
-FILE* IO::OpenRawPathForRead(const char* filename, bool log_error) {
-  TCHAR* path = get_raw_path(filename);
-  FILE* ret = fopen(path, _T("rb"));
-  if(!ret && log_error)
-    perror(path);
+std::unique_ptr<std::istream>
+IO::OpenRawPathForRead(const std::string& filename, bool log_error) {
+  TCHAR* path = get_raw_path(filename.c_str());
+  std::unique_ptr<std::istream> ret(new ifstream(path,
+                                                 std::ios::binary
+                                                 |std::ios::in));
+  if(!ret->good()) {
+    if(log_error) perror(path);
+    ret.reset();
+  }
   safe_free(path);
-  return ret;
+  return std::move(ret);
 }
 
-FILE* IO::OpenRawPathForWrite(const char* filename, bool log_error) {
-  TCHAR* path = get_raw_path(filename);
-  FILE* ret = fopen(path, _T("wb"));
-  if(!ret && log_error)
-    perror(path);
+std::unique_ptr<std::ostream>
+IO::OpenRawPathForWrite(const std::string& filename, bool log_error) {
+  TCHAR* path = get_raw_path(filename.c_str());
+  std::unique_ptr<std::ostream> ret(new ofstream(path,
+                                                 std::ios::binary
+                                                 |std::ios::out));
+  if(!ret->good()) {
+    if(log_error) perror(path);
+    ret.reset();
+  }
   safe_free(path);
-  return ret;
+  return std::move(ret);
 }
 
 enum path_type {
@@ -356,39 +418,76 @@ static TCHAR* get_config_path(const char* in_filename, path_type wat=NORMAL) {
   return path;
 }
 
-FILE* IO::OpenConfigFileForRead(const char* filename) {
-  TCHAR* path = get_config_path(filename);
-  FILE* ret = fopen(path, _T("rb"));
-  if(!ret && errno == ENOENT) {
+std::unique_ptr<std::istream>
+IO::OpenConfigFileForRead(const std::string& filename) {
+  TCHAR* path = get_config_path(filename.c_str());
+  std::unique_ptr<std::istream> ret(new ifstream(path,
+                                                 std::ios::binary
+                                                 |std::ios::in));
+  if(!ret->good() && errno == ENOENT) {
     safe_free(path);
-    path = get_config_path(filename, BACKUP);
-    ret = fopen(path, _T("rb"));
+    path = get_config_path(filename.c_str(), BACKUP);
+    ret = std::unique_ptr<std::istream>(new ifstream(path,
+                                                     std::ios::binary
+                                                     |std::ios::in));
   }
-  if(!ret && errno != ENOENT)
+  if(!ret->good()) {
+    if(errno != ENOENT) perror(path);
+    ret.reset();
+  }
+  safe_free(path);
+  return std::move(ret);
+}
+
+std::unique_ptr<std::ostream>
+IO::OpenConfigFileForWrite(const std::string& filename) {
+  TCHAR* path = get_config_path(filename.c_str(), EDIT);
+  std::unique_ptr<std::ostream> ret(new ofstream(path,
+                                                 std::ios::binary
+                                                 |std::ios::out));
+  if(!ret->good() && errno == ENOENT && try_recursive_mkdir(path)) {
+    ret->clear();
+    ret = std::unique_ptr<std::ostream>(new ofstream(path,
+                                                     std::ios::binary
+                                                     |std::ios::in));
+  }
+  if(!ret->good()) {
     perror(path);
-  safe_free(path);
-  return ret;
-}
-
-FILE* IO::OpenConfigFileForWrite(const char* filename) {
-  TCHAR* path = get_config_path(filename, EDIT);
-  FILE* ret = fopen(path, _T("wb"));
-  if(!ret) {
-    if(errno == ENOENT) {
-      if(!try_recursive_mkdir(path)) return NULL;
-      ret = fopen(path, _T("wb"));
-    }
-    if(!ret)
-      perror(path);
+    ret.reset();
   }
   safe_free(path);
+  return std::move(ret);
+}
+
+std::string IO::GetConfigFilePath(const std::string& filename) {
+#if __WIN32__ && _UNICODE
+  TCHAR* tpath = get_config_path(filename.c_str());
+  char* path;
+  int string_length = WideCharToMultiByte(CP_UTF8, 0, tpath, -1, NULL, 0,
+                                          NULL, NULL);
+  path = reinterpret_cast<char*>(safe_malloc(string_length));
+  WideCharToMultiByte(CP_UTF8, 0, tpath, -1, path, string_length,
+                      NULL, NULL);
+  safe_free(tpath);
+#else
+  /* won't actually be modified... thank you so much, Windows~ */
+  char* path = get_config_path(filename.c_str());
+#endif
+  std::string ret(path);
+  safe_free(path);
   return ret;
 }
 
-void IO::UpdateConfigFile(const char* filename) {
-  TCHAR* path_normal = get_config_path(filename, NORMAL);
-  TCHAR* path_backup = get_config_path(filename, BACKUP);
-  TCHAR* path_edit = get_config_path(filename, EDIT);
+void IO::TryCreateConfigDirectory() {
+  TCHAR* path = get_config_path("Missingfi");
+  try_recursive_mkdir(path);
+  safe_free(path);
+}
+
+void IO::UpdateConfigFile(const std::string& filename) {
+  TCHAR* path_normal = get_config_path(filename.c_str(), NORMAL);
+  TCHAR* path_backup = get_config_path(filename.c_str(), BACKUP);
+  TCHAR* path_edit = get_config_path(filename.c_str(), EDIT);
   /* optimistically assume success on all the below operations */
   /* TODO: fsync/_commit this file */
   remove(path_backup);
@@ -400,20 +499,156 @@ void IO::UpdateConfigFile(const char* filename) {
 }
 
 #if __WIN32__
+TCHAR* get_relative_path(const char* in_filename) {
+  TCHAR* filename;
+#if _UNICODE
+  int string_length = MultiByteToWideChar(CP_UTF8, 0, in_filename, -1, NULL, 0);
+  filename = reinterpret_cast<TCHAR*>(safe_malloc(string_length * sizeof(TCHAR)));
+  MultiByteToWideChar(CP_UTF8, 0, in_filename, -1, filename, string_length);
+#else
+  /* won't actually be modified... thank you so much, Windows~ */
+  filename = const_cast<char*>(in_filename);
+#endif
+  const TCHAR* self_path = GetSelfPath();
+  size_t len = strlen(self_path) + strlen(filename) + 2;
+  TCHAR* path = (TCHAR*)safe_malloc(len * sizeof(TCHAR));
+  snprintf(path, len, _T("%s" DIR_SEP "%s"),
+           self_path, filename);
+  clean_dirseps(path);
+#if _UNICODE
+  safe_free(filename);
+#endif
+  return path;
+}
+
 void IO::DoRedirectOutput() {
   /* lots of copy-pasting here... */
-  TCHAR* path = get_config_path("stdout");
+  TCHAR* path = get_relative_path("stdout.utxt");
   if(!freopen(path, _T("wb"), stdout)) {
-    if(errno == ENOENT) {
-      if(!try_recursive_mkdir(path)) return; // If try_recursive_mkdir failed, attempting to redirect stderr is pointless
-      freopen(path, _T("wb"), stdout);
+    safe_free(path);
+    path = get_config_path("stdout.utxt");
+    if(!freopen(path, _T("wb"), stdout)) {
+      if(errno == ENOENT) {
+        if(!try_recursive_mkdir(path)) return; // If try_recursive_mkdir failed, attempting to redirect stderr is pointless
+        freopen(path, _T("wb"), stdout);
+      }
+      /* if it failed, oh well */
     }
-    /* if it failed, oh well */
   }
   safe_free(path);
-  path = get_config_path("stderr");
-  freopen(path, _T("wb"), stderr);
-  /* don't try_recursive_mkdir again because why would that even happen? */
+  path = get_relative_path("stderr.utxt");
+  if(!freopen(path, _T("wb"), stderr)) {
+    safe_free(path);
+    path = get_config_path("stderr.utxt");
+    freopen(path, _T("wb"), stderr);
+    /* don't try_recursive_mkdir again because why would that even happen? */
+  }
   safe_free(path);
+}
+#endif
+
+#if TEG_USE_SN
+namespace {
+  class TegCatSource : public SN::CatSource {
+    static const std::string SUFFIX;
+    TCHAR* base_path;
+#ifdef __WIN32__
+    TCHAR* base_pattern;
+#endif
+  public:
+    TegCatSource() {
+      base_path = get_data_path(LANG_BASE_DIR DIR_SEP);
+#ifdef __WIN32__
+      base_pattern = get_data_path(LANG_BASE_DIR DIR_SEP "*");
+#endif
+    }
+    ~TegCatSource() {
+      if(base_path != nullptr) safe_free(base_path);
+#ifdef __WIN32__
+      if(base_pattern != nullptr) safe_free(base_pattern);
+#endif
+    }
+    void GetAvailableCats(std::function<void(std::string)> func) {
+#ifdef __WIN32__
+      struct _tfinddata_t ent;
+      intptr_t handle = _tfindfirst(base_pattern, &ent);
+      if(handle != -1) {
+        do {
+          if(ent.name[0] == '.'
+             || (ent.attrib & (_A_HIDDEN|_A_SUBDIR))) continue;
+#if _UNICODE
+          int len = WideCharToMultiByte(CP_UTF8, 0, ent.name, -1, nullptr, 0,
+                                        nullptr, nullptr);
+          if(len > 0) --len;
+          char* thin_buffer = reinterpret_cast<char*>(safe_malloc(len));
+          WideCharToMultiByte(CP_UTF8, 0, ent.name, -1, thin_buffer, len,
+                              nullptr, nullptr);
+          std::string name(thin_buffer, thin_buffer + len);
+          safe_free(thin_buffer);
+#else
+          std::string name(ent.name);
+#endif
+          if(name.compare(name.length()-SUFFIX.length(), name.length(),
+                          SUFFIX) != 0) continue;
+          std::string code(name.begin(),
+                           name.begin()+(name.length()-SUFFIX.length()));
+          for(auto& c : code) {
+            if(c == '-') continue;
+            else if(c == '_') c = '-';
+          }
+          if(SN::IsValidLanguageCode(code)) func(std::move(code));
+        } while(_tfindnext(handle, &ent) != -1);
+        _findclose(handle);
+      }
+#else
+      DIR* d = opendir(base_path);
+      if(d) {
+        struct dirent* ent;
+        while((ent = readdir(d))) {
+          if(ent->d_name[0] == '.'
+#ifdef DT_REG
+             || ent->d_type != DT_REG
+#endif
+             ) continue;
+          std::string name(ent->d_name);
+          if(name.compare(name.length()-SUFFIX.length(), name.length(),
+                          SUFFIX) != 0)
+            continue;
+          std::string code(name.begin(),
+                           name.begin()+(name.length()-SUFFIX.length()));
+          for(auto& c : code) {
+            if(c == '-') continue;
+            else if(c == '_') c = '-';
+          }
+          if(SN::IsValidLanguageCode(code)) func(std::move(code));
+        }
+        closedir(d);
+      }
+#endif
+    }
+    std::shared_ptr<std::istream> OpenCat(const std::string& cat) {
+      std::string path_string(LANG_BASE_DIR DIR_SEP + cat + SUFFIX);
+      TCHAR* path = get_data_path(path_string.c_str());
+      std::unique_ptr<std::istream> ret(new ifstream(path,
+                                                     std::ios::binary
+                                                     |std::ios::in));
+      if(!ret->good()) {
+        perror(path);
+        ret.reset();
+      }
+      safe_free(path);
+      return std::move(ret);
+    }
+  };
+#ifndef TEG_SN_CAT_EXTENSION
+#define TEG_SN_CAT_EXTENSION ".utxt"
+#endif
+  const std::string TegCatSource::SUFFIX(TEG_SN_CAT_EXTENSION);
+}
+
+std::shared_ptr<SN::CatSource> IO::GetSNCatSource() {
+  static std::shared_ptr<SN::CatSource> src
+    = std::make_shared<TegCatSource>();
+  return src;
 }
 #endif

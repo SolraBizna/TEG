@@ -1,17 +1,98 @@
 #include "netsock.hh"
 
-#if !__WIN32__
-#include <arpa/inet.h>
-#include <netdb.h>
-#include <signal.h>
+#if __WIN32__
+# ifdef MINGW
+#  include <ws2spi.h>
+# else
+#  include <wspiapi.h>
+# endif
+#else
+# include <arpa/inet.h>
+# include <netdb.h>
+# include <signal.h>
+# include <netinet/tcp.h>
 #endif
 
 using namespace Net;
 
 #if __WIN32__
-#define last_error WSAGetLastError()
+# define last_error WSAGetLastError()
+# define SHUT_RD SD_RECEIVE
+# define SHUT_WR SD_SEND
+# define SHUT_RDWR SD_BOTH
+// http://stackoverflow.com/questions/13731243/what-is-the-windows-xp-equivalent-of-inet-pton-or-inetpton
+static int inet_pton(int af, const char* src, void* dst) {
+  struct sockaddr_storage ss;
+  int size = sizeof(ss);
+  char src_copy[INET6_ADDRSTRLEN+1];
+  ZeroMemory(&ss, sizeof(ss));
+  /* The original code contains the following comment. I happen to agree. */
+  /* stupid non-const API */
+  strncpy(src_copy, src, INET6_ADDRSTRLEN+1);
+  src_copy[INET6_ADDRSTRLEN] = 0;
+  if(WSAStringToAddressA(src_copy, af, NULL, reinterpret_cast<sockaddr*>(&ss),
+                         &size) == 0) {
+
+    switch(af) {
+    case AF_INET:
+      *reinterpret_cast<in_addr*>(dst) =
+        reinterpret_cast<sockaddr_in*>(&ss)->sin_addr;
+      return 1;
+    case AF_INET6:
+      *reinterpret_cast<in6_addr*>(dst) =
+        reinterpret_cast<sockaddr_in6*>(&ss)->sin6_addr;
+      return 1;
+    }
+  }
+  return 0;
+}
+
+static const char* inet_ntop(int af, const void* src, char* dst, DWORD cnt) {
+  struct sockaddr_storage addr;
+  ZeroMemory(&addr, sizeof(addr));
+  addr.ss_family = af;
+  switch(af) {
+  case AF_INET:
+    ((struct sockaddr_in*)&addr)->sin_addr
+      = *reinterpret_cast<const struct in_addr*>(src);
+    break;
+  case AF_INET6:
+    ((struct sockaddr_in6*)&addr)->sin6_addr
+      = *reinterpret_cast<const struct in_addr6*>(src);
+    break;
+  default:
+    return NULL;
+  }
+  if(WSAAddressToStringA(reinterpret_cast<sockaddr*>
+                         (&addr), sizeof(addr), 0, dst, &cnt) != 0)
+    return NULL;
+  else {
+#if 0 // not needed?
+    *strrchr(dst, ':') = 0;
+    if(*dst == '[') {
+      ++dst;
+      assert(dst[strlen(dst)-1] == ']');
+      dst[strlen(dst)-1] = 0;
+    }
+#endif
+    return dst;
+  }
+}
 #else
-#define last_error errno
+# define last_error errno
+# define WSAECONNREFUSED ECONNREFUSED
+# ifdef EAGAIN
+#  define WSAEAGAIN EAGAIN
+# endif
+# ifdef EWOULDBLOCK
+#  define WSAEWOULDBLOCK EWOULDBLOCK
+# endif
+# define WSAEAGAIN EAGAIN
+# define WSAEPIPE EPIPE
+# define WSAEINTR EINTR
+# define WSAEINPROGRESS EINPROGRESS
+# define WSAEMSGSIZE EMSGSIZE
+# define WSAEADDRINUSE EADDRINUSE
 #endif
 
 static const char* error_string(int err = last_error) {
@@ -36,6 +117,8 @@ static bool have_inited_sockets = false;
 static WSADATA wsaData;
 #endif
 
+const std::string Sock::ADDRESS_IN_USE = "Unable to bind: Address already in use";
+
 static void init_sockets() {
   have_inited_sockets = true;
 #ifdef __WIN32__
@@ -53,7 +136,7 @@ Sock::~Sock() { if(Valid()) Close(); }
 
 bool Sock::Init(std::string& error_out, int domain, int type, bool blocking) {
   if(!have_inited_sockets) init_sockets();
-  int sock = socket(domain, type, 0);
+  SOCKET sock = socket(domain, type, 0);
   if(sock == INVALID_SOCKET) {
     error_out = std::string("Could not create socket: ") + error_string();
     return false;
@@ -62,7 +145,8 @@ bool Sock::Init(std::string& error_out, int domain, int type, bool blocking) {
   /* DISABLE dual-stack */
   if(domain == AF_INET6) {
     int one = 1;
-    setsockopt(sock, IPPROTO_IPV6, IPV6_V6ONLY, &one, sizeof(one));
+    setsockopt(sock, IPPROTO_IPV6, IPV6_V6ONLY,
+               reinterpret_cast<char*>(&one), sizeof(one));
   }
 #endif
   Become(sock, blocking);
@@ -100,8 +184,8 @@ bool Sock::HasError(std::string& error_out) {
     return true;
   }
   int err = 0;
-  unsigned int len = sizeof(err);
-  getsockopt(sock, SOL_SOCKET, SO_ERROR, &err, &len);
+  socklen_t len = sizeof(err);
+  getsockopt(sock, SOL_SOCKET, SO_ERROR, reinterpret_cast<char*>(&err), &len);
   if(err) {
     error_out = error_string(err);
     return true;
@@ -122,7 +206,7 @@ void Sock::Close() {
 bool Sock::GetPeerName(Address& out) {
   out.faceless.sa_family = AF_UNSPEC;
   if(!Valid()) return false;
-  unsigned int len = sizeof(out);
+  socklen_t len = sizeof(out);
   int err = getpeername(sock, &out.faceless, &len);
   return err == 0;
 }
@@ -191,6 +275,20 @@ bool Address::operator<(const Address& other) const {
 #undef PIVOT_COMPARE
 }
 
+bool Address::IsLoopback() const {
+  static uint8_t v6_localhost_bytes[16] = {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1};
+  static uint8_t v6_mapped_localhost_bytes[13]={0,0,0,0,0,0,0,0,0,0,255,255,127};
+  switch(faceless.sa_family) {
+  case AF_INET6:
+    return !memcmp(in6.sin6_addr.s6_addr, v6_localhost_bytes, 16)
+      || !memcmp(in6.sin6_addr.s6_addr, v6_mapped_localhost_bytes, 13);
+  case AF_INET:
+    return (ntohl(in.sin_addr.s_addr) & 0xFF000000) == 0x7F000000;
+  default:
+    return false;
+  }
+}
+
 std::string Address::ToString() const {
   switch(faceless.sa_family) {
   case AF_INET:
@@ -229,19 +327,26 @@ std::string Address::ToLongString() const {
   }
 }
 
-IOResult SockStream::Connect(std::string& error_out, Address& target_address,
+IOResult SockStream::Connect(std::string& error_out,
+                             const Address& target_address,
                              bool initially_blocking) {
   if(!Init(error_out, target_address.faceless.sa_family, SOCK_STREAM, initially_blocking))
     return IOResult::ERROR;
+  /* try to disable Nagle's algorithm, ignore error */
+  int one = 1;
+  setsockopt(sock, IPPROTO_TCP, TCP_NODELAY, reinterpret_cast<char*>(&one),
+             sizeof(int));
   if(connect(sock, &target_address.faceless, target_address.Length())) {
     auto err = last_error;
-    Close();
     switch(err) {
-    case EINPROGRESS: return IOResult::WOULD_BLOCK;
+    case WSAEWOULDBLOCK:
+    case WSAEINPROGRESS:
+      return IOResult::WOULD_BLOCK;
     default:
+      Close();
       error_out = std::string("Could not connect to ")
         + target_address.ToLongString() + ": " + error_string(err);
-      return err == ECONNREFUSED ? IOResult::CONNECTION_CLOSED : IOResult::ERROR;
+      return err == WSAECONNREFUSED ? IOResult::CONNECTION_CLOSED : IOResult::ERROR;
     }
   }
   return IOResult::OKAY;
@@ -254,19 +359,21 @@ IOResult SockStream::Receive(std::string& error_out,
     return IOResult::ERROR;
   }
  intr_retry:
-  ssize_t result = recv(sock, buf, len_inout, 0);
+  ssize_t result = recv(sock, reinterpret_cast<char*>(buf), len_inout, 0);
   if(result < 0) {
     switch(last_error) {
-    case EINTR: goto intr_retry;
-    case EAGAIN:
-#if EAGAIN != EWOULDBLOCK
-    case EWOULDBLOCK:
+    case WSAEINTR: goto intr_retry;
+#ifdef WSAEAGAIN
+    case WSAEAGAIN:
+#endif
+#if defined(WSAEWOULDBLOCK) && WSAEAGAIN != WSAEWOULDBLOCK
+    case WSAEWOULDBLOCK:
 #endif
       return IOResult::WOULD_BLOCK;
     default:
       auto err = last_error;
       error_out = std::string("Could not receive: ") + error_string(err);
-      return err == ECONNREFUSED ? IOResult::CONNECTION_CLOSED : IOResult::ERROR;
+      return err == WSAECONNREFUSED ? IOResult::CONNECTION_CLOSED : IOResult::ERROR;
     }
   }
   else if(result == 0) {
@@ -286,19 +393,25 @@ IOResult SockStream::Send(std::string& error_out,
     return IOResult::ERROR;
   }
  intr_retry:
-  ssize_t result = send(sock, buf, len_inout, 0);
+  ssize_t result = send(sock, reinterpret_cast<const char*>(buf), len_inout,0);
   if(result < 0) {
     switch(last_error) {
-    case EINTR: goto intr_retry;
-    case EAGAIN:
-#if EAGAIN != EWOULDBLOCK
-    case EWOULDBLOCK:
+    case WSAEINTR: goto intr_retry;
+#ifdef WSAEAGAIN
+    case WSAEAGAIN:
+#endif
+#if defined(WSAEWOULDBLOCK) && WSAEAGAIN != WSAEWOULDBLOCK
+    case WSAEWOULDBLOCK:
 #endif
       return IOResult::WOULD_BLOCK;
     default:
       auto err = last_error;
       error_out = std::string("Could not send: ") + error_string(err);
-      return (err == ECONNREFUSED || err == EPIPE) ? IOResult::CONNECTION_CLOSED : IOResult::ERROR;
+      return (err == WSAECONNREFUSED
+#ifdef WSAEPIPE
+              || err == WSAEPIPE
+#endif
+              ) ? IOResult::CONNECTION_CLOSED : IOResult::ERROR;
     }
   }
   else {
@@ -322,19 +435,61 @@ void SockStream::ShutdownBoth() {
   shutdown(sock, SHUT_RDWR);
 }
  
-IOResult SockDgram::Connect(std::string& error_out, Address& target_address) {
+IOResult SockDgram::Connect(std::string& error_out,
+                            const Address& target_address) {
   if(!Init(error_out, target_address.faceless.sa_family, SOCK_DGRAM))
     return IOResult::ERROR;
   if(connect(sock, &target_address.faceless, target_address.Length())) {
     switch(last_error) {
-    case EINPROGRESS: return IOResult::WOULD_BLOCK;
+    case WSAEWOULDBLOCK:
+    case WSAEINPROGRESS: return IOResult::WOULD_BLOCK;
     default:
       auto err = last_error;
       error_out = std::string("Could not connect to ")
         + target_address.ToLongString() + ": " + error_string(err);
-      return err == ECONNREFUSED ? IOResult::CONNECTION_CLOSED : IOResult::ERROR;
+      return err == WSAECONNREFUSED ? IOResult::CONNECTION_CLOSED : IOResult::ERROR;
     }
   }
+  return IOResult::OKAY;
+}
+
+IOResult SockDgram::MakeLoop(std::string& error_out) {
+  bool v6 = false;
+  if(!Init(error_out, AF_INET, SOCK_DGRAM, true)) {
+    v6 = true;
+    if(!Init(error_out, AF_INET6, SOCK_DGRAM, true))
+      return IOResult::ERROR;
+  }
+  Address addr;
+  if(v6) {
+    addr.in6.sin6_family = AF_INET6;
+    addr.in6.sin6_addr = IN6ADDR_LOOPBACK_INIT;
+    addr.in6.sin6_port = 0;
+  }
+  else {
+    addr.in.sin_family = AF_INET;
+    addr.in.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
+    addr.in.sin_port = 0;
+  }
+  if(bind(sock, &addr.faceless, addr.Length())) {
+    auto err = last_error;
+    error_out = std::string("Could not MakeLoop: bind: ") + error_string(err);
+    return IOResult::ERROR;
+  }
+  socklen_t len = sizeof(addr);
+  if(getsockname(sock, &addr.faceless, &len)) {
+    auto err = last_error;
+    error_out = std::string("Could not MakeLoop: getsockname: ")
+      + error_string(err);
+    return IOResult::ERROR;
+  }
+  if(connect(sock, &addr.faceless, addr.Length())) {
+    auto err = last_error;
+    error_out = std::string("Could not MakeLoop with address ")
+      + addr.ToLongString() + ": connect: " + error_string(err);
+    return IOResult::ERROR;
+  }
+  SetBlocking(false);
   return IOResult::OKAY;
 }
 
@@ -345,19 +500,21 @@ IOResult SockDgram::Receive(std::string& error_out,
     return IOResult::ERROR;
   }
  intr_retry:
-  ssize_t result = recv(sock, buf, len_inout, 0);
+  ssize_t result = recv(sock, reinterpret_cast<char*>(buf), len_inout, 0);
   if(result < 0) {
     switch(last_error) {
-    case EINTR: goto intr_retry;
-    case EAGAIN:
-#if EAGAIN != EWOULDBLOCK
-    case EWOULDBLOCK:
+    case WSAEINTR: goto intr_retry;
+#ifdef WSAEAGAIN
+    case WSAEAGAIN:
+#endif
+#if defined(WSAEWOULDBLOCK) && WSAEAGAIN != WSAEWOULDBLOCK
+    case WSAEWOULDBLOCK:
 #endif
       return IOResult::WOULD_BLOCK;
     default:
       auto err = last_error;
       error_out = std::string("Could not receive: ") + error_string(err);
-      return err == ECONNREFUSED ? IOResult::CONNECTION_CLOSED : IOResult::ERROR;
+      return err == WSAECONNREFUSED ? IOResult::CONNECTION_CLOSED : IOResult::ERROR;
     }
   }
   else {
@@ -373,21 +530,27 @@ IOResult SockDgram::Send(std::string& error_out,
     return IOResult::ERROR;
   }
  intr_retry:
-  ssize_t result = send(sock, buf, len, 0);
+  ssize_t result = send(sock, reinterpret_cast<const char*>(buf), len, 0);
   if(result < 0) {
     switch(last_error) {
-    case EINTR: goto intr_retry;
-    case EAGAIN:
-#if EAGAIN != EWOULDBLOCK
-    case EWOULDBLOCK:
+    case WSAEINTR: goto intr_retry;
+#ifdef WSAEGAIN
+    case WSAEAGAIN:
+#endif
+#if defined(WSAEWOULDBLOCK) && WSAEAGAIN != WSAEWOULDBLOCK
+    case WSAEWOULDBLOCK:
 #endif
       return IOResult::WOULD_BLOCK;
-    case EMSGSIZE:
+    case WSAEMSGSIZE:
       return IOResult::MSGSIZE;
     default:
       auto err = last_error;
       error_out = std::string("Could not send: ") + error_string(err);
-      return (err == ECONNREFUSED || err == EPIPE) ? IOResult::CONNECTION_CLOSED : IOResult::ERROR;
+      return (err == WSAECONNREFUSED
+#ifdef WSAEPIPE
+              || err == WSAEPIPE
+#endif
+              ) ? IOResult::CONNECTION_CLOSED : IOResult::ERROR;
     }
   }
   else if((size_t)result != len) {
@@ -408,7 +571,7 @@ bool ServerSock::SubBind(std::string& error_out, const char* bind_address,
   int e;
   if(bind_address) {
     switch(v) {
-    default:
+    default: die("Unknown IPVersion passed to ServerSock::Bind"); break;
     case IPVersion::V4: e = inet_pton((int)v, bind_address, &addr.in.sin_addr); break;
     case IPVersion::V6: e = inet_pton((int)v, bind_address, &addr.in6.sin6_addr); break;
     }
@@ -434,7 +597,11 @@ bool ServerSock::SubBind(std::string& error_out, const char* bind_address,
   case IPVersion::V6: addr.in6.sin6_port = htons(port); break;
   }
   if(bind(sock, &addr.faceless, addr.Length())) {
-    error_out = std::string("Unable to bind: ") + error_string();
+    int err = last_error;
+    if(err == WSAEADDRINUSE)
+      error_out = ADDRESS_IN_USE;
+    else
+      error_out = std::string("Unable to bind: ") + error_string(last_error);
     Close();
     return false;
   }
@@ -453,9 +620,13 @@ bool ServerSockStream::Bind(std::string& error_out, const char* bind_address,
 }
 
 bool ServerSockStream::Accept(SockStream& sock_out, Address& address_out) {
-  unsigned address_len = sizeof(address_out);
+  socklen_t address_len = sizeof(address_out);
   SOCKET sock = accept(this->sock, &address_out.faceless, &address_len);
   if(sock != INVALID_SOCKET) {
+    /* try to disable Nagle's algorithm, ignore error */
+    int one = 1;
+    setsockopt(sock, IPPROTO_TCP, TCP_NODELAY, reinterpret_cast<char*>(&one),
+               sizeof(int));
     sock_out.Become(sock);
     return true;
   }
@@ -475,16 +646,18 @@ IOResult ServerSockDgram::Receive(std::string& error_out,
     error_out = "Socket not valid";
     return IOResult::ERROR;
   }
-  unsigned addrlen = sizeof(address_out.storage);
+  socklen_t addrlen = sizeof(address_out.storage);
  intr_retry:
-  ssize_t result = recvfrom(sock, buf, len_inout, 0,
+  ssize_t result = recvfrom(sock, reinterpret_cast<char*>(buf), len_inout, 0,
                             &address_out.faceless, &addrlen);
   if(result < 0) {
     switch(last_error) {
-    case EINTR: goto intr_retry;
-    case EAGAIN:
-#if EAGAIN != EWOULDBLOCK
-    case EWOULDBLOCK:
+    case WSAEINTR: goto intr_retry;
+#ifdef WSAEAGAIN
+    case WSAEAGAIN:
+#endif
+#if defined(WSAEWOULDBLOCK) && WSAEAGAIN != WSAEWOULDBLOCK
+    case WSAEWOULDBLOCK:
 #endif
       return IOResult::WOULD_BLOCK;
     default:
@@ -506,23 +679,29 @@ IOResult ServerSockDgram::Send(std::string& error_out,
     return IOResult::ERROR;
   }
  intr_retry:
-  ssize_t result = sendto(sock, buf, len, 0,
+  ssize_t result = sendto(sock, reinterpret_cast<const char*>(buf), len, 0,
                           &address.faceless, address.Length());
   if(result < 0) {
     switch(last_error) {
-    case EINTR: goto intr_retry;
-    case EAGAIN:
-#if EAGAIN != EWOULDBLOCK
-    case EWOULDBLOCK:
+    case WSAEINTR: goto intr_retry;
+#ifdef WSAEAGAIN
+    case WSAEAGAIN:
+#endif
+#if defined(WSAEWOULDBLOCK) && WSAEAGAIN != WSAEWOULDBLOCK
+    case WSAEWOULDBLOCK:
 #endif
       return IOResult::WOULD_BLOCK;
-    case EMSGSIZE:
+    case WSAEMSGSIZE:
       return IOResult::MSGSIZE;
     default:
       auto err = last_error;
       error_out = std::string("Could not send to ") + address.ToLongString()
         + ": " + error_string(err);
-      return (err == ECONNREFUSED || err == EPIPE) ? IOResult::CONNECTION_CLOSED : IOResult::ERROR;
+      return (err == WSAECONNREFUSED
+#ifdef WSAEPIPE
+              || err == WSAEPIPE
+#endif
+              ) ? IOResult::CONNECTION_CLOSED : IOResult::ERROR;
     }
   }
   else if((size_t)result != len) {
@@ -548,7 +727,7 @@ Select::Select(const std::forward_list<ServerSockStream*>* read_ss,
   FD_ZERO(&readfds);
   FD_ZERO(&writefds);
 #define SOCK_INTO_SET(socklist, set) \
-  if(socklist) for(auto sock : *socklist) { FD_SET(sock->sock, &set); if(sock->sock + 1 > nfds) nfds = sock->sock + 1; }
+  if(socklist) for(auto sock : *socklist) { assert(sock->Valid()); FD_SET(sock->sock, &set); if(sock->sock + 1 > nfds) nfds = sock->sock + 1; }
   SOCK_INTO_SET(read_ss, readfds);
   SOCK_INTO_SET(read_sd, readfds);
   SOCK_INTO_SET(write_sd, writefds);
@@ -558,15 +737,21 @@ Select::Select(const std::forward_list<ServerSockStream*>* read_ss,
   SOCK_INTO_SET(write_d, writefds);
 #undef SOCK_INTO_SET
   struct timeval timeout;
-  timeout.tv_sec = max_timeout_us / 1000000;
-  timeout.tv_usec = max_timeout_us % 1000000;
+  struct timeval* timeout_ptr;
+  if(max_timeout_us == ~(size_t)0) timeout_ptr = nullptr;
+  else {
+    timeout_ptr = &timeout;
+    timeout.tv_sec = max_timeout_us / 1000000;
+    timeout.tv_usec = max_timeout_us % 1000000;
+  }
  intr_retry:
-  int nset = select(nfds, &readfds, &writefds, NULL, &timeout);
+  int nset = select(nfds, &readfds, &writefds, NULL, timeout_ptr);
   if(nset < 0) {
     switch(last_error) {
-    case EINTR:
+    case WSAEINTR:
       timeout.tv_sec = 0;
       timeout.tv_usec = 0;
+      timeout_ptr = &timeout;
       goto intr_retry;
     default:
       die("select() error: %s", error_string());
@@ -593,16 +778,30 @@ Select::Select(const std::forward_list<ServerSockStream*>* read_ss,
 
 bool Net::ResolveHost(std::string& error_out, std::forward_list<Address>& ret,
                       const char* host, uint16_t port, bool v4only) {
+  if(!have_inited_sockets) init_sockets();
   struct addrinfo hints;
   struct addrinfo* head;
+  memset(&hints, 0, sizeof(hints));
   hints.ai_family = v4only ? AF_INET : AF_UNSPEC;
   hints.ai_socktype = 0;
   hints.ai_protocol = 0;
-  hints.ai_flags = AI_V4MAPPED | AI_ADDRCONFIG;
+  hints.ai_flags = 0
+#ifdef AI_V4MAPPED
+    | AI_V4MAPPED
+#endif
+#ifdef AI_ADDRCONFIG
+    | AI_ADDRCONFIG
+#endif
+    ;
   int status = getaddrinfo(host, NULL, &hints, &head);
   if(status != 0) {
-    error_out = TEG::format("Could not resolve %s: %s",
-                            host, gai_strerror(status));
+    error_out = TEG::format("Could not resolve %s: "
+#if __WIN32__
+                            "%S"
+#else
+                            "%s"
+#endif
+                            , host, gai_strerror(status));
     return false;
   }
   else if(head == NULL) {

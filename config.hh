@@ -1,6 +1,10 @@
 #ifndef CONFIG_HH
 #define CONFIG_HH
 
+#if NO_LUA
+#error "config.hh doesn't function without Lua"
+#endif
+
 #include "teg.hh"
 
 namespace Config {

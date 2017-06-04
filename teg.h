@@ -20,12 +20,18 @@
 
 #define __STDC_FORMAT_MACROS 1
 
+#if __WIN32__
+// Why? Dunno
+#include <winsock2.h>
+#endif
+
 #include <stdint.h>
 #include <inttypes.h>
 
 #ifdef __WIN32__
 # define DIR_SEP "\\"
 # include <windows.h>
+# undef KEY_EXECUTE
 #else
 # define DIR_SEP "/"
 # include <sys/types.h>
@@ -33,17 +39,23 @@
 # include <unistd.h>
 #endif
 
-#include "SDL.h"
-#include "SDL_opengl.h"
-#include <GL/glu.h> // yuck
+#if !NO_SDL
+# include "SDL.h"
+# if !NO_OPENGL
+#  include "SDL_opengl.h"
+#  include <GL/glu.h> // yuck
 //#include OPENAL_H
+# endif
+#endif
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
+#if !NO_LUA
 #include <lua.h>
 #include <lauxlib.h>
+#endif
 
 extern int g_argc;
 extern const char** g_argv;
@@ -55,7 +67,13 @@ extern void* calloc(size_t nmemb, size_t size) __attribute__((error("Use safe_ca
 extern void* realloc(void* ptr, size_t size) __attribute__((error("Use safe_realloc instead.")));
 #endif
 
-extern char* strdup(const char* src) __attribute__((error("Use teg_strdup instead.")));
+#ifndef NO_MASK_STRDUP
+extern char* strdup(const char* src)
+#if __cplusplus
+  throw()
+#endif
+  __attribute__((error("Use teg_strdup instead.")));
+#endif
 
 /* Versions of the standard C allocation functions that are guaranteed to
    conform to our expectations. */
@@ -76,6 +94,11 @@ extern char* teg_strdup(const char* src);
 /* Display an error message to the user and then EXPLODE! */
 extern void die(const char* format, ...) __attribute__((noreturn,
                                                         format(printf,1,2)));
+
+/* Some sloppy systems include <assert.h> from random system headers */
+#ifdef assert
+#undef assert
+#endif
 
 #if DEBUG
 #define assert(expr) if(!(expr)) die("%s:%i: Assertion failed (%s)", __FILE__, __LINE__, #expr)

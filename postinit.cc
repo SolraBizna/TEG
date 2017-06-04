@@ -1,4 +1,6 @@
 #define WE_ARE_POSTINIT_CC 1
+
+#ifndef TEG_NO_POSTINIT
 #include "postinit.hh"
 
 #include <forward_list>
@@ -52,3 +54,4 @@ void TEG::DoPostInit() {
       sit();
   }
 }
+#endif

@@ -1,6 +1,7 @@
 #ifndef POSTINITHH
 #define POSTINITHH
 
+#ifndef TEG_NO_POSTINIT
 #include "teg.hh"
 #include <functional>
 
@@ -29,5 +30,6 @@ namespace TEG {
   void DoPostInit();
 #endif
 }
+#endif
 
 #endif

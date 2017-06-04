@@ -69,6 +69,14 @@ static const struct extension_element {
     END_PROCS
   },
 #endif
+#if XGL_ENABLE_PBO
+  {
+    0, 0, 0,
+    "GL_ARB_pixel_buffer_object", NULL,
+    xgl::have_ARB_pixel_buffer_object, NULL,
+    NO_PROCS
+  },
+#endif
 #if XGL_ENABLE_SHADERS
   {
     2, 0, 0,

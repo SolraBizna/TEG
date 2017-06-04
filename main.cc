@@ -1,6 +1,10 @@
+#ifndef TEG_NO_POSTINIT
 #define WE_ARE_IN_CHARGE_OF_POSTINIT_HANDLING 1
+#endif
 #include "teg.hh"
+#ifndef TEG_NO_POSTINIT
 #include "postinit.hh"
+#endif
 
 int g_argc;
 const char** g_argv;
@@ -23,8 +27,10 @@ extern "C" int wmain(int argc, WCHAR* w_argv[]) {
     WideCharToMultiByte(CP_UTF8, 0, w_argv[n], -1, argv[n], len, NULL, NULL);
   }
   g_argc = argc;
-  g_argv = argv;
+  g_argv = const_cast<const char**>(argv);
+#ifndef TEG_NO_POSTINIT
   TEG::DoPostInit();
+#endif
   return teg_main(argc, argv);
 }
 
@@ -38,6 +44,10 @@ extern "C" int main(int argc, char* argv[]) {
   w_argv = CommandLineToArgvW(command_line, &w_argc);
   return wmain(w_argc, w_argv);
 }
+
+extern "C" int WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
+  return main(0, nullptr);
+}
 #else
 extern "C" int main(int argc, char* argv[]) {
 #if MACOSX
@@ -50,7 +60,9 @@ extern "C" int main(int argc, char* argv[]) {
   g_argv0 = argv[0];
   g_argc = argc;
   g_argv = const_cast<const char**>(argv);
+#ifndef TEG_NO_POSTINIT
   TEG::DoPostInit();
+#endif
   return teg_main(argc, argv);
 }
 #endif
