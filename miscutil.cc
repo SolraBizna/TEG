@@ -6,6 +6,7 @@
 
 #include <string.h>
 #include <stdarg.h>
+#include <iostream>
 
 #if __WIN32__
 /* The following copyright notice applies to the implementation of vasprintf
