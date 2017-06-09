@@ -93,7 +93,7 @@ static TCHAR* ExecutablePathToContentsPath(TCHAR* in_path) {
   if(in_path && strlen(in_path) >= 6) {
     if(!strcmp(in_path + strlen(in_path) - strlen("/MacOS"), "/MacOS")) {
       in_path[strlen(in_path) - strlen("/MacOS")] = 0;
-      in_path = (TCHAR*)safe_realloc(in_path, strlen(in_path));
+      in_path = (TCHAR*)safe_realloc(in_path, strlen(in_path)+1);
     }
   }
   return in_path;
