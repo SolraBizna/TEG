@@ -1,3 +1,5 @@
+#define WE_ARE_POSTINIT_CC 1
+
 #ifndef TEG_NO_POSTINIT
 #include "postinit.hh"
 
