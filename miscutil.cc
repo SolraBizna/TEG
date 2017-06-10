@@ -160,6 +160,7 @@ std::string TEG::vformat(const char* format, va_list arg) {
   char* new_p = NULL;
   int count = vasprintf(&new_p, format, arg);
   assert(count >= 0 && new_p);
+  (void)count; // when compiling with NDEBUG, count will otherwise be unused
   std::string ret = std::string(new_p);
   safe_free(new_p);
   return ret;
