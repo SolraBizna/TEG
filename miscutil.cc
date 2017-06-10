@@ -158,8 +158,8 @@ std::string TEG::format(const char* format, ...) {
 
 std::string TEG::vformat(const char* format, va_list arg) {
   char* new_p = NULL;
-  vasprintf(&new_p, format, arg);
-  assert(new_p);
+  int count = vasprintf(&new_p, format, arg);
+  assert(count >= 0 && new_p);
   std::string ret = std::string(new_p);
   safe_free(new_p);
   return ret;
