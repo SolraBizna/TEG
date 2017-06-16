@@ -348,7 +348,7 @@ OpenDataFileForReadStupidWindowsHack(const std::string& filename) {
     ret.reset();
   }
   safe_free(path);
-  return std::move(ret);
+  return ret;
 }
 
 static TCHAR* get_raw_path(const char* in_path) {
@@ -375,7 +375,7 @@ IO::OpenRawPathForRead(const std::string& filename, bool log_error) {
     ret.reset();
   }
   safe_free(path);
-  return std::move(ret);
+  return ret;
 }
 
 std::unique_ptr<std::ostream>
@@ -389,7 +389,7 @@ IO::OpenRawPathForWrite(const std::string& filename, bool log_error) {
     ret.reset();
   }
   safe_free(path);
-  return std::move(ret);
+  return ret;
 }
 
 enum path_type {
@@ -436,7 +436,7 @@ IO::OpenConfigFileForRead(const std::string& filename) {
     ret.reset();
   }
   safe_free(path);
-  return std::move(ret);
+  return ret;
 }
 
 std::unique_ptr<std::ostream>
@@ -456,7 +456,7 @@ IO::OpenConfigFileForWrite(const std::string& filename) {
     ret.reset();
   }
   safe_free(path);
-  return std::move(ret);
+  return ret;
 }
 
 std::string IO::GetConfigFilePath(const std::string& filename) {
