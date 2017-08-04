@@ -71,6 +71,10 @@ typedef char TCHAR; //I love Windows!
 # define CONFIG_BASE_ENV "USERPROFILE"
 # define CONFIG_BASE_ENV_DEFAULT "C:\\Documents and Settings\\User"
 # define CONFIG_BASE_DIR "My Documents\\My Games\\" GAME_PRETTY_NAME
+#elif defined(EMSCRIPTEN)
+# define CONFIG_BASE_ENV "CONFIGPATH"
+# define CONFIG_BASE_ENV_DEFAULT "/Config"
+# define CONFIG_BASE_DIR "."
 #else
 # define CONFIG_BASE_ENV "HOME"
 # ifdef MACOSX
