@@ -29,6 +29,18 @@ namespace xgl {
   EXTERN void(*GetBufferParameteriv)(GLenum target, GLenum pname, GLint* v);
   EXTERN void(*GetBufferPointerv)(GLenum target, GLenum pname, void** v);
 #endif
+#if XGL_ENABLE_SYNC
+  /* ARB_sync */
+  EXTERN bool have_ARB_sync;
+  GLsync (*FenceSync)(GLenum condition, GLbitfield flags);
+  GLboolean (*IsSync)(GLsync sync);
+  void (*DeleteSync)(GLsync sync);
+  GLenum (*ClientWaitSync)(GLsync sync, GLbitfield flags, GLuint64 timeout);
+  void (*WaitSync)(GLsync sync, GLbitfield flags, GLuint64 timeout);
+  void (*GetInteger64v)(GLenum pname, GLint64 *params);
+  void (*GetSynciv)(GLsync sync, GLenum pname, GLsizei bufSize,
+                    GLsizei* length, GLint* values);
+#endif
 #if XGL_ENABLE_PBO
   /* ARB_pixel_buffer_object */
   EXTERN bool have_ARB_pixel_buffer_object;

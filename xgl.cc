@@ -69,6 +69,22 @@ static const struct extension_element {
     END_PROCS
   },
 #endif
+#if XGL_ENABLE_SYNC
+  {
+    3, 2, 0,
+    "GL_ARB_sync", NULL,
+    xgl::have_ARB_sync, NULL,
+    BEGIN_PROCS
+    ARB_PROC(FenceSync)
+    ARB_PROC(IsSync)
+    ARB_PROC(DeleteSync)
+    ARB_PROC(ClientWaitSync)
+    ARB_PROC(WaitSync)
+    ARB_PROC(GetInteger64v)
+    ARB_PROC(GetSynciv)
+    END_PROCS
+  },
+#endif
 #if XGL_ENABLE_PBO
   {
     0, 0, 0,
