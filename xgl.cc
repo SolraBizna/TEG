@@ -484,8 +484,8 @@ static void output_token(FILE* f, const char* p) {
 }
 
 static void chunkify_extension_list(std::unordered_set<const char*,
-                                    typeof(&bad_fast_token_hash),
-                                    typeof(&tokens_are_equivalent)>&
+                                    decltype(&bad_fast_token_hash),
+                                    decltype(&tokens_are_equivalent)>&
                                     chunky_extension_list,
                                     const char* extension_list) {
   const char* p = extension_list;
@@ -576,8 +576,8 @@ void xgl::Initialize() {
         " work on your OpenGL version if you get in touch with us.",
         core_major_version, core_minor_version, core_patch_version);
   }
-  std::unordered_set<const char*, typeof(&bad_fast_token_hash),
-                     typeof(&tokens_are_equivalent)>
+  std::unordered_set<const char*, decltype(&bad_fast_token_hash),
+                     decltype(&tokens_are_equivalent)>
     chunky_extension_list(20, bad_fast_token_hash, tokens_are_equivalent),
     blacklisted_extension_list(5, bad_fast_token_hash, tokens_are_equivalent);
   const char* extension_list
