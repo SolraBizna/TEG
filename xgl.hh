@@ -32,13 +32,14 @@ namespace xgl {
 #if XGL_ENABLE_SYNC
   /* ARB_sync */
   EXTERN bool have_ARB_sync;
-  GLsync (*FenceSync)(GLenum condition, GLbitfield flags);
-  GLboolean (*IsSync)(GLsync sync);
-  void (*DeleteSync)(GLsync sync);
-  GLenum (*ClientWaitSync)(GLsync sync, GLbitfield flags, GLuint64 timeout);
-  void (*WaitSync)(GLsync sync, GLbitfield flags, GLuint64 timeout);
-  void (*GetInteger64v)(GLenum pname, GLint64 *params);
-  void (*GetSynciv)(GLsync sync, GLenum pname, GLsizei bufSize,
+  EXTERN GLsync (*FenceSync)(GLenum condition, GLbitfield flags);
+  EXTERN GLboolean (*IsSync)(GLsync sync);
+  EXTERN void (*DeleteSync)(GLsync sync);
+  EXTERN GLenum (*ClientWaitSync)(GLsync sync, GLbitfield flags,
+                                  GLuint64 timeout);
+  EXTERN void (*WaitSync)(GLsync sync, GLbitfield flags, GLuint64 timeout);
+  EXTERN void (*GetInteger64v)(GLenum pname, GLint64 *params);
+  EXTERN void (*GetSynciv)(GLsync sync, GLenum pname, GLsizei bufSize,
                     GLsizei* length, GLint* values);
 #endif
 #if XGL_ENABLE_PBO
