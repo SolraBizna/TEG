@@ -168,17 +168,14 @@ void Config::Write(const char* filename,
     switch(element.type) {
     case String:
       *f << '"';
-      {
-        const char* p = (const char*)element.ptr;
-        while(*p) {
-          if(*p >= ' ' && *p <= '~') {
-            /* ASCII! */
-            if(*p == '\\' || *p == '"') *f << '\\';
-            *f << *p++;
-          }
-          else {
-            *f << "\\" << std::setw(3) << std::setfill('0') << *p++;
-          }
+      for(auto ch : *(std::string*)element.ptr) {
+        if(ch >= ' ' && ch <= '~') {
+          /* ASCII! */
+          if(ch == '\\' || ch == '"') *f << '\\';
+          *f << ch++;
+        }
+        else {
+          *f << "\\" << std::setw(3) << std::setfill('0') << ch++;
         }
       }
       *f << "\"\n";
