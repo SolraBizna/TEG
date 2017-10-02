@@ -19,6 +19,8 @@ namespace IO {
   OpenRawPathForRead(const std::string& path, bool log_error = true);
   std::unique_ptr<std::ostream>
   OpenRawPathForWrite(const std::string& path, bool log_error = true);
+  std::unique_ptr<std::iostream>
+  OpenRawPathForUpdate(const std::string& path, bool log_error = true);
   /* Use this to read data files; FS virtualization may be in effect
      Always prints an error on failure */
   std::unique_ptr<std::istream> OpenDataFileForRead(const std::string& path);

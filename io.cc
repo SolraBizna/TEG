@@ -143,9 +143,27 @@ public:
     p_original_buf_ = basic_ios::rdbuf(&buf_);
   }
 };
+class fstream : public std::fstream {
+private:
+  __gnu_cxx::stdio_filebuf<char> buf_;
+  std::streambuf* p_original_buf_;
+public:
+  ~ofstream() {
+    basic_ios::rdbuf( p_original_buf_ );
+    buf_.close();
+  }
+  ofstream(const TCHAR* filename,
+           std::ios_base::openmode mode = std::ios_base::in|std::ios_base::out)
+    : std::ofstream(),
+      buf_(fopen(filename, _T("r+b")), mode),
+      p_original_buf_(nullptr) {
+    p_original_buf_ = basic_ios::rdbuf(&buf_);
+  }
+};
 #else
 using std::ifstream;
 using std::ofstream;
+using std::fstream;
 #endif
 
 static const TCHAR* GetSelfPath() {
@@ -183,7 +201,7 @@ static const TCHAR* GetSelfPath() {
     } else {
       return self_path;
     }
-	
+
     // copying verbatim from below
     if(self_path != NULL) {
       safe_free(self_path);
@@ -388,6 +406,21 @@ IO::OpenRawPathForWrite(const std::string& filename, bool log_error) {
   std::unique_ptr<std::ostream> ret(new ofstream(path,
                                                  std::ios::binary
                                                  |std::ios::out));
+  if(!ret->good()) {
+    if(log_error) perror(path);
+    ret.reset();
+  }
+  safe_free(path);
+  return ret;
+}
+
+std::unique_ptr<std::iostream>
+IO::OpenRawPathForUpdate(const std::string& filename, bool log_error) {
+  TCHAR* path = get_raw_path(filename.c_str());
+  std::unique_ptr<std::iostream> ret(new fstream(path,
+                                                 std::ios::binary
+                                                 |std::ios::out
+                                                 |std::ios::in));
   if(!ret->good()) {
     if(log_error) perror(path);
     ret.reset();
