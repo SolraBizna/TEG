@@ -163,23 +163,6 @@ public:
     if(!buf_.file()) setstate(badbit);
   }
 };
-class fstream : public std::fstream {
-private:
-  __gnu_cxx::stdio_filebuf<char> buf_;
-  std::streambuf* p_original_buf_;
-public:
-  ~ofstream() {
-    basic_ios::rdbuf( p_original_buf_ );
-    buf_.close();
-  }
-  ofstream(const TCHAR* filename,
-           std::ios_base::openmode mode = std::ios_base::in|std::ios_base::out)
-    : std::ofstream(),
-      buf_(fopen(filename, _T("r+b")), mode),
-      p_original_buf_(nullptr) {
-    p_original_buf_ = basic_ios::rdbuf(&buf_);
-  }
-};
 #else
 using std::ifstream;
 using std::ofstream;
