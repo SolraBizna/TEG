@@ -133,8 +133,14 @@ extern void die(const char* format, ...) {
   std::cerr << GAME_PRETTY_NAME << " encountered a fatal error:\n"
             << error << "\n";
 #endif
-  if(SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR,
-                              GAME_PRETTY_NAME" encountered a fatal error.",
+#if TEG_USE_SN
+  std::string window_title_str = sn.Get("MESSAGEBOX_FATAL_ERROR"_Key,
+                                        {GAME_PRETTY_NAME});
+  const char* window_title = window_title_str.c_str();
+#else
+  const char* window_title = GAME_PRETTY_NAME" encountered a fatal error.";
+#endif
+  if(SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, window_title,
                               error, NULL)) {
 #if TEG_USE_SN
     std::cerr << sn.Get("CERR_FATAL_FALLBACK"_Key, {SDL_GetError()});
