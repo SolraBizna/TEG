@@ -18,12 +18,10 @@
 #define GAME_WINDOW_TITLE GAME_PRETTY_NAME
 #endif
 
-#if !__STDC_FORMAT_MACROS
 #ifdef __STDC_FORMAT_MACROS
 #undef __STDC_FORMAT_MACROS
 #endif
 #define __STDC_FORMAT_MACROS 1
-#endif
 
 #if __WIN32__
 // Why? Dunno
