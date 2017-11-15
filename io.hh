@@ -42,7 +42,7 @@ namespace IO {
   void DoRedirectOutput();
 #endif
 #ifdef TEG_USE_SN
-  std::shared_ptr<SN::CatSource> GetSNCatSource();
+  std::unique_ptr<SN::CatSource> GetSNCatSource();
 #endif
 };
 

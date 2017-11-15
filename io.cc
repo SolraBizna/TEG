@@ -666,7 +666,7 @@ namespace {
       }
 #endif
     }
-    std::shared_ptr<std::istream> OpenCat(const std::string& cat) {
+    std::unique_ptr<std::istream> OpenCat(const std::string& cat) {
       std::string path_string(LANG_BASE_DIR DIR_SEP + cat + SUFFIX);
       TCHAR* path = get_data_path(path_string.c_str());
       std::unique_ptr<std::istream> ret(new ifstream(path,
@@ -677,7 +677,7 @@ namespace {
         ret.reset();
       }
       safe_free(path);
-      return std::move(ret);
+      return ret;
     }
   };
 #ifndef TEG_SN_CAT_EXTENSION
@@ -686,9 +686,7 @@ namespace {
   const std::string TegCatSource::SUFFIX(TEG_SN_CAT_EXTENSION);
 }
 
-std::shared_ptr<SN::CatSource> IO::GetSNCatSource() {
-  static std::shared_ptr<SN::CatSource> src
-    = std::make_shared<TegCatSource>();
-  return src;
+std::unique_ptr<SN::CatSource> IO::GetSNCatSource() {
+  return std::make_unique<TegCatSource>();
 }
 #endif
