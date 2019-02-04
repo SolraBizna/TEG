@@ -36,6 +36,10 @@ namespace IO {
   /* Use this for, say, an sqlite config database
      Returns a UTF-8 absolute path to a config file with the given name. */
   std::string GetConfigFilePath(const std::string& filename);
+  /* Returns `nullptr` if the file already existed. Use this to save a
+     screenshot or the like. */
+  std::unique_ptr<std::ostream>
+  OpenDesktopFileForWrite(const std::string& filename);
   /* Use this, say, if SQLITE_CANTOPEN is returned for a database */
   void TryCreateConfigDirectory();
 #if __WIN32__

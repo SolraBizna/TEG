@@ -71,10 +71,16 @@ typedef char TCHAR; //I love Windows!
 # define CONFIG_BASE_ENV "USERPROFILE"
 # define CONFIG_BASE_ENV_DEFAULT "C:\\Documents and Settings\\User"
 # define CONFIG_BASE_DIR "My Documents\\My Games\\" GAME_PRETTY_NAME
+# define DESKTOP_BASE_ENV "USERPROFILE"
+# define DESKTOP_BASE_ENV_DEFAULT "C:\\Documents and Settings\\User"
+# define DESKTOP_BASE_DIR "Desktop"
 #elif defined(EMSCRIPTEN)
 # define CONFIG_BASE_ENV "CONFIGPATH"
 # define CONFIG_BASE_ENV_DEFAULT "/Config"
 # define CONFIG_BASE_DIR "."
+# define DESKTOP_BASE_ENV "DESKTOPPATH"
+# define DESKTOP_BASE_ENV_DEFAULT "/Desktop"
+# define DESKTOP_BASE_DIR "."
 #else
 # define CONFIG_BASE_ENV "HOME"
 # ifdef MACOSX
@@ -84,6 +90,9 @@ typedef char TCHAR; //I love Windows!
 #  define CONFIG_BASE_ENV_DEFAULT "/home"
 #  define CONFIG_BASE_DIR ".local/share/" GAME_PRETTY_NAME
 # endif
+# define DESKTOP_BASE_ENV "HOME"
+# define DESKTOP_BASE_ENV_DEFAULT CONFIG_BASE_ENV_DEFAULT
+# define DESKTOP_BASE_DIR "Desktop"
 #endif
 #define CONFIG_EXT ""
 
@@ -539,7 +548,7 @@ void IO::UpdateConfigFile(const std::string& filename) {
 }
 
 #if __WIN32__
-TCHAR* get_relative_path(const char* in_filename) {
+static TCHAR* get_relative_path(const char* in_filename) {
   TCHAR* filename;
 #if _UNICODE
   int string_length = MultiByteToWideChar(CP_UTF8, 0, in_filename, -1, NULL, 0);
@@ -586,6 +595,57 @@ void IO::DoRedirectOutput() {
   safe_free(path);
 }
 #endif
+
+static TCHAR* get_desktop_path(const char* in_filename) {
+  TCHAR* filename;
+#if __WIN32__ && _UNICODE
+  int string_length = MultiByteToWideChar(CP_UTF8, 0, in_filename, -1, NULL, 0);
+  filename = reinterpret_cast<TCHAR*>(safe_malloc(string_length * sizeof(TCHAR)));
+  MultiByteToWideChar(CP_UTF8, 0, in_filename, -1, filename, string_length);
+#else
+  /* won't actually be modified... thank you so much, Windows~ */
+  filename = const_cast<char*>(in_filename);
+#endif
+  const TCHAR* home = getenv(_T(DESKTOP_BASE_ENV));
+  if(!home) home = _T(DESKTOP_BASE_ENV_DEFAULT);
+  size_t len = strlen(home) + strlen(_T(DESKTOP_BASE_DIR)) + strlen(filename) + 3;
+  TCHAR* path = (TCHAR*)safe_malloc(len * sizeof(TCHAR));
+  snprintf(path, len, _T("%s" DIR_SEP DESKTOP_BASE_DIR DIR_SEP "%s"),
+           home, filename);
+  clean_dirseps(path);
+#if __WIN32__ && _UNICODE
+  safe_free(filename);
+#endif
+  return path;
+}
+
+std::unique_ptr<std::ostream>
+IO::OpenDesktopFileForWrite(const std::string& filename) {
+  TCHAR* path = get_desktop_path(filename.c_str());
+  {
+    ifstream check(path, std::ios::binary|std::ios::in);
+    if(check.good()) {
+      safe_free(path);
+      return nullptr;
+    }
+  }
+  std::unique_ptr<std::ostream> ret(new ofstream(path,
+                                                 std::ios::binary
+                                                 |std::ios::out));
+  if(!ret->good() && errno == ENOENT && try_recursive_mkdir(path)) {
+    ret->clear();
+    ret = std::unique_ptr<std::ostream>(new ofstream(path,
+                                                     std::ios::binary
+                                                     |std::ios::in));
+  }
+  if(!ret->good()) {
+    perror(path);
+    ret.reset();
+  }
+  safe_free(path);
+  return ret;
+}
+
 
 #if TEG_USE_SN
 namespace {
